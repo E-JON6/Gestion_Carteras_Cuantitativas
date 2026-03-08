@@ -6,8 +6,12 @@ Estimación de costes de transacción.
 
 import numpy as np
 import pandas as pd
-from gestion_cuantitativa.config import DEFAULT_LAMBDA_L, DEFAULT_LAMBDA_M
 
+import os
+
+# Valores por defecto si no hay archivo BID/ASK disponible
+DEFAULT_LAMBDA_L = 0.002
+DEFAULT_LAMBDA_M = 0.002
 
 def corwin_schultz_spread(high, low, window=21):
     """
@@ -124,3 +128,57 @@ def estimate_transaction_costs(risky_data, method='corwin_schultz', window=21):
 
     else:
         raise ValueError(f"Método desconocido: {method}")
+
+
+def load_lambda_from_bidask(bidask_dir, etf_ticker):
+    """
+    Lee el CSV de BID/ASK de Bloomberg y calcula el λ según
+    la fórmula de las normas, usando solo enero 2026.
+
+    Args:
+        bidask_dir: ruta a la carpeta con los CSVs
+        etf_ticker: ticker del ETF (ej. 'MSE.PA')
+
+    Returns:
+        float: λ calculado (se usa igual para compra y venta)
+    """
+
+    # Mapeo de ticker a nombre de archivo
+    ticker_to_file = {
+        'MSE.PA':  'EUROSTOXX50-bid_ask.csv',
+        'IUSE.L':  'SP500-bid_ask.csv',
+        'IEMA.L':  'EM-bid_ask.csv',
+        'IUSN.DE': 'WorldSmallCap-bid_ask.csv',
+    }
+
+    filename = ticker_to_file.get(etf_ticker)
+    if filename is None:
+        print(f"  ⚠ No hay archivo BID/ASK para {etf_ticker}, usando λ por defecto")
+        return DEFAULT_LAMBDA_L
+
+    filepath = os.path.join(bidask_dir, filename)
+    if not os.path.exists(filepath):
+        print(f"  ⚠ Archivo no encontrado: {filepath}, usando λ por defecto")
+        return DEFAULT_LAMBDA_L
+
+    # Leer CSV de Bloomberg (6 líneas de cabecera)
+    df = pd.read_csv(filepath, sep=';', skiprows=6, decimal=',')
+    df.columns = ['Date', 'BID', 'ASK']
+    df['Date'] = pd.to_datetime(df['Date'], format='%d/%m/%Y')
+    df = df.dropna()
+
+    # Filtrar solo enero 2026
+    enero = df[
+        (df['Date'] >= '2026-01-01') &
+        (df['Date'] <= '2026-01-31')
+    ]
+
+    if len(enero) == 0:
+        print(f"  ⚠ Sin datos de enero 2026 para {etf_ticker}, usando λ por defecto")
+        return DEFAULT_LAMBDA_L
+
+    # Fórmula de las normas
+    lam = compute_ct_from_bid_ask(enero['BID'], enero['ASK'])
+    print(f"  λ calculado desde BID/ASK ({len(enero)} días enero 2026): {lam:.6f} ({lam*100:.4f}%)")
+
+    return lam

@@ -2,6 +2,9 @@
 Configuración global del proyecto.
 Parámetros del modelo, datos y backtesting.
 """
+import os
+# Directorio con los CSVs de BID/ASK de Bloomberg
+BIDASK_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'bidask')
 
 # ============================================================
 # PARÁMETROS DEL MODELO
@@ -79,34 +82,36 @@ DEFAULT_LAMBDA_M = 0.002         # Coste de venta: 0.2%
 
 # ETFs de acumulación (total return) — no requieren ajuste por dividendos
 # Ambos denominados en EUR; se ejecuta backtest por separado sobre cada uno
+from gestion_cuantitativa.data.transaction_costs import load_lambda_from_bidask
+
 ETF_CONFIGS = {
     "MSE.PA": {
         "name": "Euro Stoxx 50 ETF",
         "description": "Amundi EURO STOXX 50 II UCITS ETF Acc - Euronext Paris",
         "fallback_tickers": ["C50.PA", "EUN2.DE"],
-        "lambda_L": 0.01,            # Coste proporcional compra: 1%
-        "lambda_M": 0.01,            # Coste proporcional venta: 1%
+        "lambda_L": load_lambda_from_bidask(BIDASK_DIR, "MSE.PA"),
+        "lambda_M": load_lambda_from_bidask(BIDASK_DIR, "MSE.PA"),
     },
     "IUSE.L": {
         "name": "S&P 500 EUR Hedged ETF",
         "description": "iShares S&P 500 EUR Hedged UCITS ETF Acc - LSE",
         "fallback_tickers": ["IUSE.DE"],
-        "lambda_L": 0.02,            # Coste proporcional compra: 2%
-        "lambda_M": 0.02,            # Coste proporcional venta: 2%
+        "lambda_L": load_lambda_from_bidask(BIDASK_DIR, "IUSE.L"),
+        "lambda_M": load_lambda_from_bidask(BIDASK_DIR, "IUSE.L"),
     },
     "IEMA.L": {
         "name": "Emerging Markets ETF",
         "description": "iShares MSCI EM UCITS ETF Acc - LSE",
         "fallback_tickers": ["IEMA.DE", "EIMI.L"],
-        "lambda_L": 0.02,            # Coste proporcional compra: 2%
-        "lambda_M": 0.02,            # Coste proporcional venta: 2%
+        "lambda_L": load_lambda_from_bidask(BIDASK_DIR, "IEMA.L"),
+        "lambda_M": load_lambda_from_bidask(BIDASK_DIR, "IEMA.L"),
     },
     "IUSN.DE": {
         "name": "World Small Cap ETF",
         "description": "iShares MSCI World Small Cap UCITS ETF Acc - XETRA",
         "fallback_tickers": ["IUSN.L", "WSML.L"],
-        "lambda_L": 0.02,            # Coste proporcional compra: 2%
-        "lambda_M": 0.02,            # Coste proporcional venta: 2%
+        "lambda_L": load_lambda_from_bidask(BIDASK_DIR, "IUSN.DE"),
+        "lambda_M": load_lambda_from_bidask(BIDASK_DIR, "IUSN.DE"),
     },
 }
 DEFAULT_ETF_TICKER = "MSE.PA"

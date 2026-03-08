@@ -54,7 +54,7 @@ def rolling_mu(returns, risk_free_series=None, window=None,
     if risk_free_series is not None and shrinkage < 1.0:
         # Alinear risk-free con los retornos
         rf_aligned = risk_free_series.reindex(returns.index, method='ffill')
-        rf_aligned = rf_aligned.fillna(method='bfill').fillna(0.02)
+        rf_aligned = rf_aligned.bfill().fillna(0.02)
         mu_prior = rf_aligned + prior_erp
         mu_annual = shrinkage * mu_annual + (1.0 - shrinkage) * mu_prior
     elif shrinkage < 1.0:
@@ -122,7 +122,7 @@ def get_daily_risk_free_rate(risk_free_series, dates):
     """
     # Forward-fill y reindex
     rf = risk_free_series.reindex(dates, method='ffill')
-    rf = rf.fillna(method='bfill')  # Por si las primeras fechas no tienen dato
+    rf = rf.bfill()  # Por si las primeras fechas no tienen dato
     return rf
 
 
