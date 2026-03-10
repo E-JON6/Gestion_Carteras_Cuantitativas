@@ -47,9 +47,9 @@ MU_PRIOR_ERP = 0.05          # Prima de riesgo equity prior: 5% anual
 REBALANCE_FREQ_BENCHMARK = 5     # Rebalanceo cada 5 días (semanal)
 
 # E2: Momentum
-MOMENTUM_LOOKBACK = 252          # 12 meses
-MOMENTUM_SKIP = 21               # Excluir último mes (12-1)
-ALPHA_MIN_MOMENTUM = 0.10        # Posición mínima cuando momentum < 0
+MOMENTUM_LOOKBACK = 252         # 12 meses 252
+MOMENTUM_SKIP = 21              # Excluir último mes (12-1) 21
+ALPHA_MIN_MOMENTUM = 0.1       # Posición mínima cuando momentum < 0
 
 # E3: Volatility Targeting
 SIGMA_TARGET = 0.15              # Volatilidad objetivo: 15% anualizado

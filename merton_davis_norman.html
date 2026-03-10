@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merton & Davis-Norman — Guía Matemática Completa</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --ink:      #1a1a2e;
+    --paper:    #f8f5ef;
+    --cream:    #f0ebe0;
+    --accent:   #c8392b;
+    --gold:     #b8860b;
+    --blue:     #1a4a7a;
+    --muted:    #6b6560;
+    --rule:     #d4c9b8;
+    --highlight:#fff3cd;
+    --code-bg:  #1e2030;
+    --code-txt: #c0caf5;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.75;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: var(--ink);
+    padding: 0 2rem;
+    display: flex; align-items: center; gap: 0;
+    height: 52px;
+    border-bottom: 2px solid var(--accent);
+  }
+  nav .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem; font-weight: 700;
+    color: var(--paper); letter-spacing: 0.05em;
+    margin-right: auto;
+    white-space: nowrap;
+  }
+  nav a {
+    color: #aaa; text-decoration: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem; letter-spacing: 0.08em;
+    padding: 0 0.9rem; height: 52px;
+    display: flex; align-items: center;
+    transition: color 0.2s, background 0.2s;
+    border-left: 1px solid #333;
+  }
+  nav a:hover { color: var(--paper); background: #2a2a3e; }
+
+  /* HERO */
+  .hero {
+    margin-top: 52px;
+    background: var(--ink);
+    padding: 5rem 2rem 4rem;
+    text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 39px,
+      rgba(255,255,255,0.03) 39px, rgba(255,255,255,0.03) 40px
+    ),
+    repeating-linear-gradient(
+      90deg, transparent, transparent 39px,
+      rgba(255,255,255,0.03) 39px, rgba(255,255,255,0.03) 40px
+    );
+  }
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem; letter-spacing: 0.2em;
+    color: var(--accent); text-transform: uppercase;
+    margin-bottom: 1.2rem;
+  }
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 900; color: var(--paper);
+    line-height: 1.15; margin-bottom: 0.5rem;
+  }
+  .hero h1 span { color: var(--accent); }
+  .hero-sub {
+    color: #888; font-size: 1rem;
+    font-style: italic; margin-bottom: 2.5rem;
+  }
+  .hero-pills {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem;
+  }
+  .pill {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #ccc; border-radius: 2px;
+    padding: 0.3rem 0.9rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem; letter-spacing: 0.05em;
+  }
+
+  /* LAYOUT */
+  .container {
+    max-width: 860px; margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* SECTIONS */
+  section {
+    padding: 4rem 0 3rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  section:last-child { border-bottom: none; }
+
+  .section-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; color: var(--accent);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem; font-weight: 700;
+    color: var(--ink); margin-bottom: 1.5rem;
+    line-height: 1.2;
+  }
+  h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem; font-weight: 700;
+    color: var(--blue); margin: 2rem 0 0.8rem;
+  }
+  h4 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 1rem; font-weight: 600;
+    color: var(--ink); margin: 1.5rem 0 0.5rem;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    font-size: 0.85rem;
+  }
+  p { margin-bottom: 1.1rem; color: #2a2a2a; }
+
+  /* MATH BLOCKS */
+  .math-block {
+    background: var(--cream);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+    padding: 1.5rem 1.8rem;
+    margin: 1.8rem 0;
+    overflow-x: auto;
+  }
+  .math-block .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem; color: var(--muted);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 0.7rem;
+  }
+
+  /* DEFINITION BOX */
+  .def-box {
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--blue);
+    border-radius: 0 0 4px 4px;
+    padding: 1.4rem 1.6rem;
+    margin: 1.8rem 0;
+    background: #fbf9f5;
+  }
+  .def-box .def-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; color: var(--blue);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+
+  /* KEY RESULT */
+  .key-result {
+    background: linear-gradient(135deg, #1a2a4a 0%, #1a1a2e 100%);
+    border-radius: 4px;
+    padding: 1.8rem 2rem;
+    margin: 2rem 0;
+    color: var(--paper);
+  }
+  .key-result .kr-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem; color: var(--accent);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    margin-bottom: 0.8rem;
+  }
+  .key-result p { color: #ccc; margin-bottom: 0.5rem; }
+  .key-result p:last-child { margin-bottom: 0; }
+
+  /* NUESTRO MODELO */
+  .our-model {
+    background: #fff8e1;
+    border: 1px solid #f0c040;
+    border-left: 4px solid var(--gold);
+    border-radius: 0 4px 4px 0;
+    padding: 1.4rem 1.6rem;
+    margin: 1.8rem 0;
+  }
+  .our-model .om-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem; color: var(--gold);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+  .our-model p { color: #4a3800; margin-bottom: 0.4rem; }
+  .our-model p:last-child { margin-bottom: 0; }
+
+  /* CODE */
+  pre {
+    background: var(--code-bg);
+    border-radius: 4px;
+    padding: 1.3rem 1.5rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--code-txt);
+  }
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+    background: rgba(0,0,0,0.07);
+    padding: 0.1em 0.35em;
+    border-radius: 2px;
+    color: var(--accent);
+  }
+  pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+  /* PARAMS TABLE */
+  .param-table {
+    width: 100%; border-collapse: collapse;
+    margin: 1.5rem 0; font-size: 0.92rem;
+  }
+  .param-table th {
+    background: var(--ink); color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem; letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.7rem 1rem; text-align: left;
+  }
+  .param-table td {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  .param-table tr:nth-child(even) td { background: var(--cream); }
+  .param-table td:first-child {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem; color: var(--accent);
+    white-space: nowrap;
+  }
+
+  /* STEP FLOW */
+  .steps { list-style: none; margin: 1.5rem 0; }
+  .steps li {
+    display: flex; gap: 1.2rem;
+    margin-bottom: 1.2rem; align-items: flex-start;
+  }
+  .step-num {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    background: var(--accent); color: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem; font-weight: 500;
+    margin-top: 0.1rem;
+  }
+  .step-content { flex: 1; }
+  .step-content strong {
+    display: block; margin-bottom: 0.2rem;
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+  }
+  .step-content p { margin: 0; font-size: 0.93rem; color: var(--muted); }
+
+  /* ALERT */
+  .alert {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-left: 4px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+    padding: 1rem 1.4rem;
+    margin: 1.5rem 0;
+    font-size: 0.93rem;
+  }
+  .alert strong { color: var(--accent); }
+
+  /* TOC */
+  .toc {
+    background: var(--cream);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1.5rem 1.8rem;
+    margin: 2rem 0;
+  }
+  .toc-title {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700; font-size: 1rem;
+    margin-bottom: 0.8rem; color: var(--ink);
+  }
+  .toc ol { padding-left: 1.4rem; }
+  .toc li { margin-bottom: 0.3rem; font-size: 0.92rem; }
+  .toc a { color: var(--blue); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* DIVIDER */
+  .rule { border: none; border-top: 1px solid var(--rule); margin: 2rem 0; }
+
+  /* FOOTER */
+  footer {
+    background: var(--ink); color: #666;
+    text-align: center; padding: 2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem; letter-spacing: 0.08em;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 640px) {
+    nav a { display: none; }
+    nav a:first-of-type { display: flex; }
+    .hero { padding: 3rem 1.2rem 2.5rem; }
+    .container { padding: 0 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">Merton · Davis-Norman</span>
+  <a href="#merton">Merton</a>
+  <a href="#davis-norman">Davis-Norman</a>
+  <a href="#union">Unión</a>
+  <a href="#nuestro">Nuestro Modelo</a>
+  <a href="#estrategias">Estrategias</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-label">Guía matemática completa</div>
+  <h1>Merton &amp; <span>Davis-Norman</span></h1>
+  <p class="hero-sub">De la teoría a la implementación práctica en gestión cuantitativa</p>
+  <div class="hero-pills">
+    <span class="pill">Control Estocástico</span>
+    <span class="pill">Utilidad CRRA</span>
+    <span class="pill">Costes de Transacción</span>
+    <span class="pill">Bandas de No-Transacción</span>
+    <span class="pill">EWMA · Shrinkage</span>
+    <span class="pill">Vol Targeting</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- TOC -->
+  <div style="padding-top: 3rem;">
+    <div class="toc">
+      <div class="toc-title">Índice</div>
+      <ol>
+        <li><a href="#merton">El modelo de Merton — asignación óptima sin costes</a></li>
+        <li><a href="#utilidad">Función de utilidad CRRA y aversión al riesgo</a></li>
+        <li><a href="#davis-norman">Davis-Norman — costes de transacción y bandas</a></li>
+        <li><a href="#union">Cómo se unen Merton y Davis-Norman</a></li>
+        <li><a href="#nuestro">Nuestro modelo: estimación de parámetros</a></li>
+        <li><a href="#estrategias">Las cinco estrategias</a></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 1: MERTON -->
+  <section id="merton">
+    <div class="section-number">01 — Fundamento teórico</div>
+    <h2>El Modelo de Merton (1969)</h2>
+
+    <p>Robert Merton se preguntó: dado un inversor que vive en tiempo continuo, que puede invertir en un activo arriesgado y en un activo libre de riesgo, y que tiene una función de utilidad concreta sobre su riqueza, ¿cuál es la fracción óptima de riqueza que debe mantener en el activo arriesgado en cada instante?</p>
+
+    <h3>El entorno del modelo</h3>
+
+    <p>El precio del activo arriesgado (el ETF) sigue un movimiento browniano geométrico:</p>
+
+    <div class="math-block">
+      <div class="label">Dinámica del precio del activo</div>
+      \[ dS_t = \mu \, S_t \, dt + \sigma \, S_t \, dW_t \]
+    </div>
+
+    <p>Donde \(\mu\) es la rentabilidad esperada instantánea (drift), \(\sigma\) es la volatilidad, y \(W_t\) es un movimiento browniano estándar. El activo libre de riesgo crece a tipo \(r_f\) de forma determinista.</p>
+
+    <p>Si el inversor mantiene una fracción \(\alpha\) de su riqueza \(V_t\) en el activo arriesgado y el resto \((1-\alpha)\) en el activo libre de riesgo, la dinámica de su riqueza es:</p>
+
+    <div class="math-block">
+      <div class="label">Dinámica de la riqueza del inversor</div>
+      \[ dV_t = V_t \left[ \alpha(\mu - r_f) + r_f \right] dt + V_t \, \alpha \, \sigma \, dW_t \]
+    </div>
+
+    <h3>El problema de optimización</h3>
+
+    <p>Merton plantea maximizar la utilidad esperada de la riqueza en horizonte infinito (o en horizonte finito T). El inversor elige en cada instante la fracción \(\alpha_t\) que maximiza:</p>
+
+    <div class="math-block">
+      <div class="label">Problema de control óptimo</div>
+      \[ \max_{\{\alpha_t\}} \; \mathbb{E}\left[ \int_0^\infty e^{-\rho t} \, U(V_t) \, dt \right] \]
+    </div>
+
+    <p>donde \(\rho\) es la tasa de descuento temporal y \(U(\cdot)\) es la función de utilidad del inversor.</p>
+  </section>
+
+  <!-- SECCIÓN 2: UTILIDAD -->
+  <section id="utilidad">
+    <div class="section-number">02 — Función de utilidad</div>
+    <h2>Utilidad CRRA y Aversión al Riesgo</h2>
+
+    <p>Para que el problema tenga solución elegante, Merton usa la familia de funciones de utilidad CRRA (<em>Constant Relative Risk Aversion</em>):</p>
+
+    <div class="math-block">
+      <div class="label">Función de utilidad CRRA</div>
+      \[ U(V) = \frac{V^{1+\gamma}}{1+\gamma}, \quad \gamma < 0, \quad \gamma \neq -1 \]
+    </div>
+
+    <div class="def-box">
+      <div class="def-title">¿Qué es la Aversión Relativa al Riesgo (RRA)?</div>
+      <p>Se define como \(\text{RRA} = -\frac{V \cdot U''(V)}{U'(V)}\). Para la utilidad CRRA resulta constante e igual a \(1 - \gamma\). Mide cuánto penaliza el inversor la varianza en relación con su nivel de riqueza.</p>
+      <ul style="padding-left:1.4rem; margin-top:0.5rem; font-size:0.93rem; color:#444;">
+        <li>RRA = 1 → inversor casi neutral al riesgo, toma posiciones grandes</li>
+        <li>RRA = 3 → perfil moderado-alto, habitual en literatura académica</li>
+        <li>RRA = 10 → inversor muy conservador, posiciones pequeñas</li>
+      </ul>
+    </div>
+
+    <div class="our-model">
+      <div class="om-label">En nuestro modelo</div>
+      <p>Usamos <code>GAMMA = -2</code>, por tanto <strong>RRA = 1 - (-2) = 3</strong>.</p>
+      <p>Un inversor con RRA=3 está dispuesto a asumir riesgo pero lo penaliza significativamente. Ante dos carteras con la misma rentabilidad esperada, siempre prefiere la de menor volatilidad.</p>
+    </div>
+
+    <h3>La solución de Merton</h3>
+
+    <p>Con utilidad CRRA, el problema de control óptimo tiene solución cerrada. La fracción óptima de riqueza en el activo arriesgado es <strong>constante en el tiempo</strong>:</p>
+
+    <div class="key-result">
+      <div class="kr-label">★ Resultado central de Merton</div>
+      \[ \alpha^* = \frac{\mu - r_f}{(1-\gamma) \cdot \sigma^2} = \frac{\mu - r_f}{\text{RRA} \cdot \sigma^2} \]
+      <p>Esta es la fracción óptima de riqueza en el activo arriesgado. No depende de la riqueza actual, solo de los parámetros del mercado y de la aversión al riesgo.</p>
+    </div>
+
+    <h3>Interpretación de la fórmula</h3>
+
+    <table class="param-table">
+      <thead>
+        <tr>
+          <th>Componente</th>
+          <th>Qué representa</th>
+          <th>Efecto en α*</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>\(\mu - r_f\)</td>
+          <td>Prima de riesgo del activo: cuánto más da el ETF respecto al activo libre de riesgo</td>
+          <td>↑ prima → ↑ posición</td>
+        </tr>
+        <tr>
+          <td>\(\sigma^2\)</td>
+          <td>Varianza del activo: el riesgo que asumes por invertir</td>
+          <td>↑ volatilidad → ↓ posición</td>
+        </tr>
+        <tr>
+          <td>RRA</td>
+          <td>Aversión al riesgo del inversor</td>
+          <td>↑ aversión → ↓ posición</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert">
+      <strong>Problema crítico de Merton en la práctica:</strong> el modelo asume rebalanceo continuo hacia α* sin ningún coste. En la realidad, cada operación tiene costes de transacción (bid-ask spread, comisiones). Rebalancear cada día destruye rentabilidad. Aquí entra Davis-Norman.
+    </div>
+  </section>
+
+  <!-- SECCIÓN 3: DAVIS-NORMAN -->
+  <section id="davis-norman">
+    <div class="section-number">03 — Costes de transacción</div>
+    <h2>Davis-Norman (1990): Bandas de No-Transacción</h2>
+
+    <p>Mark Davis y Andrew Norman resolvieron en 1990 el problema de Merton en presencia de costes de transacción proporcionales. La pregunta es: si cada operación tiene un coste \(\lambda\) proporcional al importe negociado, ¿cuándo compensa rebalancear y cuándo no?</p>
+
+    <h3>El coste de transacción proporcional</h3>
+
+    <p>Si compramos o vendemos un importe \(\Delta\) del activo, el coste es:</p>
+
+    <div class="math-block">
+      <div class="label">Coste de transacción proporcional</div>
+      \[ \text{Coste} = \lambda \cdot |\Delta| \]
+    </div>
+
+    <p>En nuestro caso, \(\lambda\) se calcula con datos BID/ASK reales de Bloomberg para enero de 2026:</p>
+
+    <div class="math-block">
+      <div class="label">Cálculo de lambda (spread BID-ASK)</div>
+      \[ \lambda_i = \frac{ASK_i - BID_i}{(ASK_i + BID_i) \cdot 0.5} \cdot 0.5 + 0.0001 \]
+      \[ \lambda = \frac{1}{N}\sum_{i} \lambda_i \]
+    </div>
+
+    <div class="our-model">
+      <div class="om-label">Valores reales en nuestro modelo</div>
+      <p>IUSE.L (S&P 500 EUR Hedged): <strong>λ = 0.0210%</strong></p>
+      <p>MSE.PA (Euro Stoxx 50): <strong>λ = 0.1738%</strong></p>
+      <p>IEMA.L (Emerging Markets): <strong>λ = 0.0491%</strong></p>
+      <p>IUSN.DE (World Small Cap): <strong>λ = 0.0605%</strong></p>
+    </div>
+
+    <h3>La solución: región de no-transacción</h3>
+
+    <p>Davis y Norman demostraron que la política óptima con costes proporcionales tiene esta estructura:</p>
+
+    <ul style="padding-left: 1.4rem; margin: 1rem 0 1.5rem;">
+      <li style="margin-bottom: 0.6rem;">Existe una <strong>banda de no-transacción</strong> \([\alpha^* - \Delta, \; \alpha^* + \Delta]\)</li>
+      <li style="margin-bottom: 0.6rem;">Mientras α esté dentro de la banda: <strong>no hacer nada</strong></li>
+      <li style="margin-bottom: 0.6rem;">Cuando α toca el borde inferior: <strong>comprar</strong> justo hasta α*</li>
+      <li>Cuando α toca el borde superior: <strong>vender</strong> justo hasta α*</li>
+    </ul>
+
+    <div class="key-result">
+      <div class="kr-label">★ Ancho de la banda Davis-Norman</div>
+      \[ \Delta = \sqrt{\frac{3 \cdot \lambda \cdot \alpha^*}{\text{RRA} \cdot \sigma^2}} \]
+      <p>La banda es más ancha cuando los costes \(\lambda\) son altos (cuesta más rebalancear), y más estrecha cuando la volatilidad \(\sigma\) es alta (el coste de estar mal posicionado es mayor).</p>
+    </div>
+
+    <h3>Intuición económica de las bandas</h3>
+
+    <p>¿Por qué no rebalancear siempre a α*? Porque hay un <em>trade-off</em>: rebalancear tiene un coste inmediato (λ) pero evita estar alejado del óptimo. Davis y Norman calcularon exactamente el punto en que ese coste iguala al beneficio de rebalancear. Ese punto define el borde de la banda.</p>
+
+    <p>Cuando la volatilidad es alta, estar lejos de α* es más perjudicial (porque las oscilaciones de precio te afectan más), por eso la banda se estrecha y se rebalancea con más frecuencia. Cuando los costes son altos, el umbral para actuar sube y la banda se ensancha.</p>
+
+    <div class="our-model">
+      <div class="om-label">En nuestro modelo</div>
+      <p>Las bandas se recalculan <strong>cada día</strong> con los parámetros estimados en ese momento (σ actualizada con EWMA, α* recalculado). Las bandas son dinámicas, no fijas.</p>
+      <p>En código: <code>ancho = sqrt(3 * CT * alpha_star / (RRA * sigma²))</code></p>
+      <p><code>banda_inf = max(0, alpha_star - ancho)</code></p>
+      <p><code>banda_sup = min(1, alpha_star + ancho)</code></p>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 4: UNIÓN -->
+  <section id="union">
+    <div class="section-number">04 — Síntesis</div>
+    <h2>Cómo se Unen Merton y Davis-Norman</h2>
+
+    <p>La relación es directa: <strong>Merton dice cuál es el α* óptimo. Davis-Norman dice cuándo vale la pena moverse hacia él.</strong></p>
+
+    <ul class="steps">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <strong>Merton calcula el destino</strong>
+          <p>Con los parámetros estimados hoy (μ, σ, r_f), Merton nos da el α* óptimo. Si no hubiera costes, estaríamos siempre ahí.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <strong>Davis-Norman construye la banda alrededor del destino</strong>
+          <p>Con el λ real y la σ de hoy, calculamos el ancho de la banda óptima alrededor de α*. Esta banda define la zona de inacción.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <strong>Comparamos la posición actual con la banda</strong>
+          <p>Si α_actual está dentro: no hacer nada. El mercado se encarga de mover α_actual a través de los movimientos de precio.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <strong>Si α_actual sale de la banda: rebalancear a α*</strong>
+          <p>No al borde de la banda, sino directamente al centro óptimo. Así se minimiza la frecuencia de futuras operaciones.</p>
+        </div>
+      </li>
+    </ul>
+
+    <div class="math-block">
+      <div class="label">Regla de decisión completa</div>
+      \[
+      \text{Decisión} = \begin{cases}
+        \text{COMPRAR} \to \alpha^* & \text{si } \alpha_{\text{actual}} < \alpha^* - \Delta \\
+        \text{MANTENER}             & \text{si } \alpha^* - \Delta \leq \alpha_{\text{actual}} \leq \alpha^* + \Delta \\
+        \text{VENDER} \to \alpha^*  & \text{si } \alpha_{\text{actual}} > \alpha^* + \Delta
+      \end{cases}
+      \]
+    </div>
+
+    <h3>¿Por qué α_actual se mueve sin que operemos?</h3>
+
+    <p>Porque el precio del ETF cambia cada día. Si el ETF sube, el valor de nuestra posición en el ETF crece, y por tanto su peso en la cartera total aumenta. α_actual derivará hacia arriba sin que hagamos nada. Si el ETF baja suficiente, α_actual caerá por debajo de la banda inferior y entonces compramos.</p>
+  </section>
+
+  <!-- SECCIÓN 5: NUESTRO MODELO -->
+  <section id="nuestro">
+    <div class="section-number">05 — Implementación</div>
+    <h2>Nuestro Modelo: Estimación de Parámetros</h2>
+
+    <p>Merton y Davis-Norman son teoría. Para aplicarlos necesitamos estimar μ y σ con datos reales. Aquí es donde el modelo abstracto se convierte en algo operable.</p>
+
+    <h3>Estimación de σ: EWMA</h3>
+
+    <p>No usamos la volatilidad histórica simple (que da el mismo peso a un dato de hace 10 años que a uno de ayer). Usamos EWMA (<em>Exponentially Weighted Moving Average</em>), que da más peso a los datos recientes:</p>
+
+    <div class="math-block">
+      <div class="label">Actualización EWMA de la varianza</div>
+      \[ \hat{\sigma}^2_t = \lambda_{\text{EWMA}} \cdot \hat{\sigma}^2_{t-1} + (1 - \lambda_{\text{EWMA}}) \cdot r_t^2 \]
+      \[ \sigma_{\text{anual}} = \sqrt{\hat{\sigma}^2_t \cdot 252} \]
+    </div>
+
+    <div class="our-model">
+      <div class="om-label">En nuestro modelo</div>
+      <p><code>EWMA_LAMBDA = 0.94</code> — valor estándar de RiskMetrics (JP Morgan, 1994).</p>
+      <p>Con λ=0.94, un dato de hace 30 días pesa aproximadamente un 16% de lo que pesa el día de hoy. La "memoria efectiva" es de unos 3 meses.</p>
+    </div>
+
+    <h3>Estimación de μ: Shrinkage Bayesiano</h3>
+
+    <p>La rentabilidad esperada μ es notoriamente difícil de estimar. Si usamos solo el histórico reciente, obtenemos estimaciones muy ruidosas que generan posiciones extremas. La solución es <em>shrinkage</em>: mezclar la estimación histórica con un prior razonable de largo plazo.</p>
+
+    <div class="math-block">
+      <div class="label">Estimación de mu con shrinkage</div>
+      \[ \hat{\mu} = (1 - \kappa) \cdot \hat{\mu}_{\text{histórica}} + \kappa \cdot \mu_{\text{prior}} \]
+    </div>
+
+    <div class="our-model">
+      <div class="om-label">En nuestro modelo</div>
+      <p><code>MU_SHRINKAGE = 0.15</code>, <code>mu_prior = 7%</code> anual.</p>
+      <p>Es decir: \(\hat{\mu} = 0.85 \cdot \hat{\mu}_{\text{hist}} + 0.15 \cdot 7\%\)</p>
+      <p>Si el histórico dice 20%, el modelo usa 0.85×20% + 0.15×7% = 18.05%. Si dijera 0%, usaría 1.05% en lugar de 0%. Evita posiciones vacías por estimaciones temporalmente malas.</p>
+    </div>
+
+    <h3>El pipeline completo cada día</h3>
+
+    <pre><code># 1. Retornos logarítmicos diarios
+r_t = log(P_t / P_{t-1})
+
+# 2. Volatilidad EWMA (actualización recursiva)
+sigma²_t = 0.94 * sigma²_{t-1} + 0.06 * r_t²
+sigma_anual = sqrt(sigma²_t * 252)
+
+# 3. Mu con shrinkage
+mu_hist = mean(r) * 252
+mu = 0.85 * mu_hist + 0.15 * 0.07
+
+# 4. Alpha* de Merton (RRA = 3)
+alpha_star = (mu - rf) / (3 * sigma_anual²)
+alpha_star = clip(alpha_star, 0, 1)   # sin apalancamiento
+
+# 5. Banda Davis-Norman
+ancho = sqrt(3 * lambda * alpha_star / (3 * sigma_anual²))
+banda_inf = max(0, alpha_star - ancho)
+banda_sup = min(1, alpha_star + ancho)
+
+# 6. Decisión
+if alpha_actual < banda_inf:   COMPRAR  → alpha_star
+elif alpha_actual > banda_sup: VENDER   → alpha_star
+else:                          MANTENER</code></pre>
+
+    <table class="param-table">
+      <thead>
+        <tr><th>Parámetro</th><th>Valor</th><th>Justificación</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>GAMMA</td>
+          <td>-2</td>
+          <td>RRA = 3, perfil moderado-alto, estándar en literatura</td>
+        </tr>
+        <tr>
+          <td>EWMA_LAMBDA</td>
+          <td>0.94</td>
+          <td>Estándar RiskMetrics, memoria efectiva ~3 meses</td>
+        </tr>
+        <tr>
+          <td>MU_SHRINKAGE</td>
+          <td>0.15</td>
+          <td>15% hacia prior del 7% anual, evita estimaciones extremas</td>
+        </tr>
+        <tr>
+          <td>SIGMA_TARGET</td>
+          <td>15%</td>
+          <td>Volatilidad objetivo en E3/E4/E5, nivel habitual en fondos</td>
+        </tr>
+        <tr>
+          <td>MAX_LEVERAGE</td>
+          <td>1.0</td>
+          <td>Sin apalancamiento, α siempre en [0, 1]</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- SECCIÓN 6: ESTRATEGIAS -->
+  <section id="estrategias">
+    <div class="section-number">06 — Extensiones del modelo base</div>
+    <h2>Las Cinco Estrategias</h2>
+
+    <p>El modelo base Merton + Davis-Norman es la estrategia E1. Las demás añaden capas de lógica sobre ese núcleo, modificando el α* objetivo antes de calcular las bandas.</p>
+
+    <h3>E1 — Davis-Norman Adaptativo (modelo base)</h3>
+    <p>Implementación pura de Merton + Davis-Norman descrita arriba. Sin modificaciones adicionales. El α* objetivo es directamente el de Merton.</p>
+    <div class="math-block">
+      <div class="label">E1: alpha objetivo</div>
+      \[ \alpha_{\text{obj}} = \alpha^*_{\text{Merton}} = \frac{\mu - r_f}{\text{RRA} \cdot \sigma^2} \]
+    </div>
+
+    <hr class="rule">
+
+    <h3>E2 — DN + Momentum</h3>
+    <p>Ajusta α* en función del momentum del ETF (retorno de 12 meses menos retorno del último mes). Si el activo tiene momentum positivo, se sube la posición. Si negativo, se baja.</p>
+    <div class="math-block">
+      <div class="label">E2: señal de momentum y alpha ajustado</div>
+      \[ \text{mom} = r_{12m} - r_{1m} \]
+      \[ \alpha_{\text{obj}} = \text{clip}\left(\alpha^* \cdot (1 + 0.5 \cdot \text{sgn(mom)}), \; 0, \; 1\right) \]
+    </div>
+
+    <hr class="rule">
+
+    <h3>E3 — DN + Volatility Targeting</h3>
+    <p>En lugar de apuntar al α* de Merton, apunta a mantener una volatilidad de cartera constante del 15%. Si σ sube, reduce exposición. Si σ baja, la aumenta.</p>
+    <div class="math-block">
+      <div class="label">E3: alpha ajustado por volatilidad objetivo</div>
+      \[ \alpha_{\text{obj}} = \min\left(\frac{\sigma_{\text{target}}}{\sigma_{\text{actual}}}, \; 1\right) = \min\left(\frac{0.15}{\sigma}, \; 1\right) \]
+    </div>
+
+    <hr class="rule">
+
+    <h3>E4 — DN + Régimen Defensivo <span style="color:var(--gold); font-size:0.85rem;">(candidata principal)</span></h3>
+    <p>Parte de E3 y añade detección de régimen usando la media móvil de 200 días (SMA200). En tendencia bajista, reduce el α objetivo a la mitad.</p>
+    <div class="math-block">
+      <div class="label">E4: detección de régimen</div>
+      \[ \alpha_{\text{vol}} = \min\left(\frac{\sigma_{\text{target}}}{\sigma}, 1\right) \]
+      \[ \alpha_{\text{obj}} = \begin{cases} \alpha_{\text{vol}} & \text{si } P_t > \text{SMA}_{200} \text{ (alcista)} \\ 0.5 \cdot \alpha_{\text{vol}} & \text{si } P_t \leq \text{SMA}_{200} \text{ (bajista)} \end{cases} \]
+    </div>
+
+    <hr class="rule">
+
+    <h3>E5 — DN + Drawdown Shield</h3>
+    <p>Igual que E4 pero añade un tercer nivel de protección: si la cartera cae más de un 8% desde su máximo histórico, entra en modo defensivo y reduce α a la mitad adicional. Sale del modo cuando recupera hasta el -3% (histéresis para evitar entradas y salidas repetidas).</p>
+    <div class="math-block">
+      <div class="label">E5: lógica de drawdown con histéresis</div>
+      \[ DD_t = \frac{V_t}{V_{\text{peak}}} - 1 \]
+      \[ \text{modo defensivo}: \begin{cases} \text{ON}  & \text{si } DD_t < -8\% \\ \text{OFF} & \text{si } DD_t > -3\% \end{cases} \]
+      \[ \alpha_{\text{obj}} = \begin{cases} \alpha_{\text{E4}} & \text{si modo defensivo OFF} \\ 0.5 \cdot \alpha_{\text{E4}} & \text{si modo defensivo ON} \end{cases} \]
+    </div>
+
+    <div class="def-box">
+      <div class="def-title">¿Qué es la histéresis y por qué importa?</div>
+      <p>Si usáramos el mismo umbral para entrar y salir del modo defensivo (por ejemplo -8% en ambos casos), el modelo podría entrar y salir repetidamente cuando el drawdown oscila alrededor de ese valor, generando muchas operaciones innecesarias y costes elevados.</p>
+      <p style="margin-top:0.6rem;">Con histéresis usamos dos umbrales distintos: se entra al -8% pero se sale al -3%. Una vez activado el modo defensivo, el mercado tiene que recuperar bastante antes de que volvamos a posición normal. Esto reduce la frecuencia de operaciones en mercados laterales.</p>
+    </div>
+
+    <h3>Resumen comparativo de estrategias</h3>
+
+    <table class="param-table">
+      <thead>
+        <tr>
+          <th>Estrategia</th>
+          <th>Base</th>
+          <th>Añade</th>
+          <th>Sharpe IS (S&P 500)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Buy &amp; Hold</td>
+          <td>α = 1 siempre</td>
+          <td>—</td>
+          <td>0.787</td>
+        </tr>
+        <tr>
+          <td>E1 DN Adapt.</td>
+          <td>Merton + DN</td>
+          <td>—</td>
+          <td>0.782</td>
+        </tr>
+        <tr>
+          <td>E2 Momentum</td>
+          <td>E1</td>
+          <td>Señal momentum 12-1m</td>
+          <td>0.731</td>
+        </tr>
+        <tr>
+          <td>E3 VolTarget</td>
+          <td>E1</td>
+          <td>σ objetivo 15%</td>
+          <td>0.814</td>
+        </tr>
+        <tr>
+          <td>E4 Régimen</td>
+          <td>E3</td>
+          <td>SMA200 detección régimen</td>
+          <td>0.831</td>
+        </tr>
+        <tr>
+          <td>E5 DD Shield</td>
+          <td>E4</td>
+          <td>Drawdown shield + histéresis</td>
+          <td>0.836</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </section>
+
+</div>
+
+<footer>
+  Merton (1969) · Davis &amp; Norman (1990) · RiskMetrics (1994) &nbsp;|&nbsp;
+  Master en Finanzas Cuantitativas AFI &nbsp;|&nbsp; Gestión Cuantitativa de Carteras
+</footer>
+
+</body>
+</html>

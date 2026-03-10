@@ -232,109 +232,87 @@ def guardar_estado(estado):
 
 def generar_excel(fecha, decision, precio, alpha_ant, alpha_nuevo,
                   valor_cartera, importe, coste, n_ops, costes_acum):
+    """
+    Genera o actualiza el archivo Operativa_GrupoX.xlsx con el formato AFI.
+
+    Formato exacto del template:
+        ID | Cantidad | Precio | CT | Precio Ejecutado
+
+    Reglas por decision:
+        COMPRAR : Cantidad = participaciones compradas (>0)
+                  Precio   = Last Price
+                  CT       = lambda del ETF
+                  Precio Ejecutado = Precio * (1 + CT)
+        VENDER  : Cantidad = participaciones vendidas (<0, negativo)
+                  Precio   = Last Price
+                  CT       = lambda del ETF
+                  Precio Ejecutado = Precio * (1 - CT)
+        MANTENER: Cantidad=0, Precio=0, CT=CT, Precio Ejecutado=0
+
+    El archivo es ACUMULATIVO: se añade una fila nueva cada dia.
+    Si no existe se crea con las cabeceras del template.
+    """
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    path = OUTPUT_DIR / f"Operativa_Grupo{GRUPO}_{fecha.strftime('%Y%m%d')}.xlsx"
+    # Un unico archivo acumulativo por grupo
+    path = OUTPUT_DIR / f"Operativa_Grupo{GRUPO}.xlsx"
 
-    wb  = openpyxl.Workbook()
-    ws  = wb.active
-    ws.title = "Operativa"
+    ct    = CT.get(ETF_TICKER, 0.001)
+    bold  = Font(name="Calibri", bold=True, size=11)
+    norm  = Font(name="Calibri", size=11)
+    brd   = Border(left=Side(style="thin"),  right=Side(style="thin"),
+                   top=Side(style="thin"),   bottom=Side(style="thin"))
+    ctr   = Alignment(horizontal="center", vertical="center")
 
-    hdr  = Font(name="Arial", bold=True, color="FFFFFF", size=11)
-    hfil = PatternFill("solid", start_color="1F4E79")
-    bold = Font(name="Arial", bold=True, size=10)
-    norm = Font(name="Arial", size=10)
-    gfil = PatternFill("solid", start_color="E2EFDA")
-    rfil = PatternFill("solid", start_color="FCE4D6")
-    bfil = PatternFill("solid", start_color="DDEBF7")
-    yfil = PatternFill("solid", start_color="FFFF00")
-    ctr  = Alignment(horizontal="center", vertical="center")
-    lft  = Alignment(horizontal="left",   vertical="center")
-    brd  = Border(left=Side(style="thin"),  right=Side(style="thin"),
-                  top=Side(style="thin"),   bottom=Side(style="thin"))
+    # Calcular valores de la fila segun la decision
+    if decision == "COMPRAR":
+        # Participaciones compradas = importe / precio ejecutado
+        precio_ejec = round(precio * (1 + ct), 6)
+        cantidad    = round(importe / precio_ejec, 4) if precio_ejec > 0 else 0.0
+        precio_fila = round(precio, 4)
+    elif decision == "VENDER":
+        # Participaciones vendidas = negativo
+        precio_ejec = round(precio * (1 - ct), 6)
+        cantidad    = -round(importe / precio_ejec, 4) if precio_ejec > 0 else 0.0
+        precio_fila = round(precio, 4)
+    else:  # MANTENER
+        cantidad    = 0
+        precio_fila = 0
+        precio_ejec = 0
 
-    def c(row, col, val, font=norm, fill=None, align=ctr, border=brd, fmt=None):
-        cell = ws.cell(row=row, column=col, value=val)
-        cell.font      = font
-        cell.alignment = align
-        cell.border    = border
-        if fill: cell.fill = fill
-        if fmt:  cell.number_format = fmt
-        return cell
+    nueva_fila = [ETF_TICKER, cantidad, precio_fila, ct, precio_ejec]
 
-    ws.merge_cells("A1:F1")
-    c(1, 1, f"OPERATIVA SIMULACION — GRUPO {GRUPO} — {fecha.strftime('%d/%m/%Y')}",
-      hdr, hfil)
-    ws.row_dimensions[1].height = 26
+    # Si el archivo no existe, crearlo con las cabeceras del template
+    if not path.exists():
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Operativa"
 
-    color_dec = gfil if decision == "COMPRAR" else rfil if decision == "VENDER" else bfil
-    ws.merge_cells("A2:F2")
-    c(2, 1, f"ETF: {ETF_TICKER}  |  Estrategia: {ESTRATEGIA}  |  Decision: {decision}",
-      bold, color_dec)
-    ws.row_dimensions[2].height = 20
+        # Cabeceras exactas del template AFI
+        cabeceras = ["ID", "Cantidad", "Precio", "CT", "Precio Ejecutado"]
+        for col, txt in enumerate(cabeceras, 1):
+            cell = ws.cell(row=1, column=col, value=txt)
+            cell.font      = bold
+            cell.border    = brd
+            cell.alignment = ctr
 
-    for col, txt in enumerate(["CAMPO", "VALOR", "", "CAMPO", "VALOR", ""], 1):
-        if txt:
-            c(4, col, txt, hdr, hfil)
-    ws.row_dimensions[4].height = 20
+        # Anchos de columna
+        for col, w in zip("ABCDE", [14, 14, 14, 12, 18]):
+            ws.column_dimensions[col].width = w
+    else:
+        wb = openpyxl.load_workbook(path)
+        ws = wb.active
 
-    izq = [
-        ("Ticker",            ETF_TICKER),
-        ("Fecha operacion",   fecha.strftime("%d/%m/%Y")),
-        ("Precio cierre",     round(precio, 4)),
-        ("CT (coste transac)",round(CT.get(ETF_TICKER, 0.001), 6)),
-        ("Decision",          decision),
-        ("Importe operacion", round(importe, 2)),
-        ("Coste operacion",   round(coste, 2)),
-    ]
-    der = [
-        ("Alpha anterior",    round(alpha_ant,   4)),
-        ("Alpha nuevo",       round(alpha_nuevo, 4)),
-        ("Delta Alpha",       round(alpha_nuevo - alpha_ant, 4)),
-        ("Valor cartera",     round(valor_cartera, 2)),
-        ("Capital inicial",   CAPITAL_INICIAL),
-        ("Retorno acumulado", round((valor_cartera / CAPITAL_INICIAL) - 1, 6)),
-        ("N operaciones",     n_ops),
-    ]
+    # Añadir la fila nueva al final
+    next_row = ws.max_row + 1
+    formatos = [None, "#,##0.0000", "#,##0.0000", "0.000000%", "#,##0.0000"]
 
-    for i, ((li, vi), (ld, vd)) in enumerate(zip(izq, der)):
-        r = 5 + i
-        c(r, 1, li, bold, align=lft)
-        ci = c(r, 2, vi, norm, color_dec if i == 4 else None)
-        if isinstance(vi, float) and i == 2:
-            ci.number_format = "#,##0.0000"
-        elif isinstance(vi, float) and i in [5, 6]:
-            ci.number_format = "#,##0.00"
-        c(r, 4, ld, bold, align=lft)
-        cd = c(r, 5, vd, norm)
-        if isinstance(vd, float):
-            if "alpha" in ld.lower() or "delta" in ld.lower():
-                cd.number_format = "0.0000"
-            elif "retorno" in ld.lower():
-                cd.number_format = "0.00%"
-                cd.fill = gfil if vd >= 0 else rfil
-            elif "valor" in ld.lower() or "capital" in ld.lower():
-                cd.number_format = "#,##0.00"
-
-    r0 = 14
-    ws.merge_cells(f"A{r0}:F{r0}")
-    c(r0, 1, "INSTRUCCIONES DE ENVIO", hdr, hfil)
-
-    instrucciones = [
-        f"Destinatario: {EMAIL_DESTINO}",
-        f"Asunto: [GQ_2026] - Grupo{GRUPO}",
-        "Horario valido: entre las 20:00 y las 23:59h",
-        ("ADJUNTAR ESTE ARCHIVO al email" if decision != "MANTENER"
-         else "HOY NO HAY OPERACION — archivo solo de registro"),
-        f"Costes acumulados hasta hoy: {costes_acum:,.2f} EUR",
-    ]
-    for j, txt in enumerate(instrucciones):
-        rr = r0 + 1 + j
-        ws.merge_cells(f"A{rr}:F{rr}")
-        c(rr, 1, txt, bold if j == 3 else norm,
-          yfil if j == 3 and decision == "MANTENER" else None, lft)
-
-    for col, w in zip("ABCDEF", [22, 18, 3, 22, 18, 3]):
-        ws.column_dimensions[col].width = w
+    for col, (val, fmt) in enumerate(zip(nueva_fila, formatos), 1):
+        cell = ws.cell(row=next_row, column=col, value=val)
+        cell.font      = norm
+        cell.border    = brd
+        cell.alignment = ctr
+        if fmt:
+            cell.number_format = fmt
 
     wb.save(path)
     return path
