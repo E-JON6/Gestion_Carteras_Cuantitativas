@@ -149,6 +149,7 @@ def load_lambda_from_bidask(bidask_dir, etf_ticker):
         'IUSE.L':  'SP500-bid_ask.csv',
         'IEMA.L':  'EM-bid_ask.csv',
         'IUSN.DE': 'WorldSmallCap-bid_ask.csv',
+        'IS3Q.DE': 'IS3Q.DE-bid_ask.csv',
     }
 
     filename = ticker_to_file.get(etf_ticker)
@@ -162,7 +163,9 @@ def load_lambda_from_bidask(bidask_dir, etf_ticker):
         return DEFAULT_LAMBDA_L
 
     # Leer CSV de Bloomberg (6 líneas de cabecera)
-    df = pd.read_csv(filepath, sep=';', skiprows=6, decimal=',')
+    # usecols=[0,1,2] ignora columnas vacías extra que Excel añade al exportar
+    df = pd.read_csv(filepath, sep=';', skiprows=6, decimal=',',
+                     usecols=[0, 1, 2], header=0)
     df.columns = ['Date', 'BID', 'ASK']
     df['Date'] = pd.to_datetime(df['Date'], format='%d/%m/%Y')
     df = df.dropna()
