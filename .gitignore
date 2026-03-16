@@ -12,3 +12,4 @@ __pycache__/
 *.pyd
 *.pyw
 *.pyz
+outputs/
