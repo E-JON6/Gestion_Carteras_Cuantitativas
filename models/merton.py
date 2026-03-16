@@ -4,7 +4,7 @@ Fracción óptima en el activo de riesgo bajo utilidad potencial.
 """
 
 import numpy as np
-from gestion_cuantitativa.config import GAMMA, MAX_LEVERAGE, MIN_POSITION
+from config import GAMMA, MAX_LEVERAGE, MIN_POSITION
 
 
 def merton_fraction(mu, sigma, r, gamma=None):

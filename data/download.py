@@ -6,7 +6,7 @@ Yahoo Finance para precios de ETFs, FRED para tasas de interés.
 import pandas as pd
 import yfinance as yf
 import pandas_datareader as pdr
-from gestion_cuantitativa.config import (
+from config import (
     ETF_CONFIGS, DEFAULT_ETF_TICKER,
     RISK_FREE_FRED, VIX_TICKER,
     DATA_START, SIMULATION_END

@@ -13,7 +13,7 @@ Referencias:
 """
 
 import numpy as np
-from gestion_cuantitativa.config import GAMMA, MAX_LEVERAGE
+from config import GAMMA, MAX_LEVERAGE
 
 
 # ============================================================

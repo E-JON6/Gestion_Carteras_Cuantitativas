@@ -5,12 +5,12 @@ Ejecuta una estrategia sobre datos históricos respetando las normas del proyect
 
 import numpy as np
 import pandas as pd
-from gestion_cuantitativa.backtest.portfolio import Portfolio
-from gestion_cuantitativa.models.param_estimation import (
+from backtest.portfolio import Portfolio
+from models.param_estimation import (
     ParameterEstimator, compute_log_returns
 )
-from gestion_cuantitativa.data.transaction_costs import estimate_transaction_costs
-from gestion_cuantitativa.config import (
+from data.transaction_costs import estimate_transaction_costs
+from config import (
     INITIAL_WEALTH, TRADING_DAYS_PER_YEAR,
     DEFAULT_LAMBDA_L, DEFAULT_LAMBDA_M
 )

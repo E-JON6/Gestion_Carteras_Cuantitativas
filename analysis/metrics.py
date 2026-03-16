@@ -5,7 +5,7 @@ Sharpe, drawdown, Calmar, turnover, costes, etc.
 
 import numpy as np
 import pandas as pd
-from gestion_cuantitativa.config import TRADING_DAYS_PER_YEAR
+from config import TRADING_DAYS_PER_YEAR
 
 
 def compute_metrics(result, avg_risk_free=None):

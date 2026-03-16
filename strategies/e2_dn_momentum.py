@@ -5,10 +5,10 @@ Davis-Norman decide CUÁNDO ejecutar: solo si la desviación supera la frontera.
 """
 
 import numpy as np
-from gestion_cuantitativa.strategies.base import Strategy
-from gestion_cuantitativa.models.merton import merton_fraction, clip_allocation
-from gestion_cuantitativa.models.davis_norman import dn_bands_asymptotic
-from gestion_cuantitativa.config import (
+from strategies.base import Strategy
+from models.merton import merton_fraction, clip_allocation
+from models.davis_norman import dn_bands_asymptotic
+from config import (
     GAMMA, RECALIBRATION_FREQ,
     MOMENTUM_LOOKBACK, MOMENTUM_SKIP, ALPHA_MIN_MOMENTUM
 )

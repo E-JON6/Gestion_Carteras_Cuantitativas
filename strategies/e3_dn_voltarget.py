@@ -6,10 +6,10 @@ Davis-Norman recalcula fronteras con σ actual y aplica bang-bang.
 """
 
 import numpy as np
-from gestion_cuantitativa.strategies.base import Strategy
-from gestion_cuantitativa.models.merton import clip_allocation
-from gestion_cuantitativa.models.davis_norman import dn_bands_asymptotic
-from gestion_cuantitativa.config import (
+from strategies.base import Strategy
+from models.merton import clip_allocation
+from models.davis_norman import dn_bands_asymptotic
+from config import (
     GAMMA, RECALIBRATION_FREQ, SIGMA_TARGET, MAX_LEVERAGE
 )
 

@@ -5,9 +5,9 @@ Sirve como referencia para demostrar que ignorar fricciones es subóptimo.
 """
 
 import numpy as np
-from gestion_cuantitativa.strategies.base import Strategy
-from gestion_cuantitativa.models.merton import merton_fraction, clip_allocation
-from gestion_cuantitativa.config import GAMMA, REBALANCE_FREQ_BENCHMARK
+from strategies.base import Strategy
+from models.merton import merton_fraction, clip_allocation
+from config import GAMMA, REBALANCE_FREQ_BENCHMARK
 
 
 class BenchmarkMerton(Strategy):

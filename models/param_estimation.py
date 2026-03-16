@@ -5,7 +5,7 @@ Métodos: Rolling, EWMA, GARCH.
 
 import numpy as np
 import pandas as pd
-from gestion_cuantitativa.config import (
+from config import (
     EWMA_LAMBDA, ROLLING_WINDOW_MU, ROLLING_WINDOW_SIGMA,
     EWMA_WINDOW_SIGMA, TRADING_DAYS_PER_YEAR,
     MU_SHRINKAGE, MU_PRIOR_ERP

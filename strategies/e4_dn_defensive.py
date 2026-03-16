@@ -26,10 +26,10 @@ Ventajas sobre E3:
 """
 
 import numpy as np
-from gestion_cuantitativa.strategies.base import Strategy
-from gestion_cuantitativa.models.merton import clip_allocation
-from gestion_cuantitativa.models.davis_norman import dn_bands_asymptotic
-from gestion_cuantitativa.config import (
+from strategies.base import Strategy
+from models.merton import clip_allocation
+from models.davis_norman import dn_bands_asymptotic
+from config import (
     GAMMA, RECALIBRATION_FREQ, SIGMA_TARGET, MAX_LEVERAGE,
     E4_VOL_CRISIS_MULT, E4_TREND_WINDOW, E4_BAND_COST_MULT
 )

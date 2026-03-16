@@ -82,7 +82,7 @@ DEFAULT_LAMBDA_M = 0.002         # Coste de venta: 0.2%
 
 # ETFs de acumulación (total return) — no requieren ajuste por dividendos
 # Ambos denominados en EUR; se ejecuta backtest por separado sobre cada uno
-from gestion_cuantitativa.data.transaction_costs import load_lambda_from_bidask
+from data.transaction_costs import load_lambda_from_bidask
 
 ETF_CONFIGS = {
     "MSE.PA": {

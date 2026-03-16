@@ -4,10 +4,10 @@ El más fiel al TFG: Merton + bandas DN recalibradas periódicamente.
 """
 
 import numpy as np
-from gestion_cuantitativa.strategies.base import Strategy
-from gestion_cuantitativa.models.merton import merton_fraction, clip_allocation
-from gestion_cuantitativa.models.davis_norman import dn_bands_asymptotic
-from gestion_cuantitativa.config import GAMMA, RECALIBRATION_FREQ
+from strategies.base import Strategy
+from models.merton import merton_fraction, clip_allocation
+from models.davis_norman import dn_bands_asymptotic
+from config import GAMMA, RECALIBRATION_FREQ
 
 
 class E1_DN_Adaptive(Strategy):

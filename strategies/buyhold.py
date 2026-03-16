@@ -4,7 +4,7 @@ Invierte el 100% del patrimonio en el activo de riesgo y no rebalancea.
 Sirve como referencia para evaluar si las estrategias activas aportan valor.
 """
 
-from gestion_cuantitativa.strategies.base import Strategy
+from strategies.base import Strategy
 
 
 class BuyAndHold(Strategy):

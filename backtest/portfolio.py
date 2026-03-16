@@ -3,7 +3,7 @@ Gestión del portfolio: posiciones, riqueza, ejecución de trades con costes.
 """
 
 import numpy as np
-from gestion_cuantitativa.config import INITIAL_WEALTH, MAX_LEVERAGE, MIN_POSITION
+from config import INITIAL_WEALTH, MAX_LEVERAGE, MIN_POSITION
 
 
 class Portfolio:

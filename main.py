@@ -12,7 +12,7 @@ Estrategias:
     - E5: Davis-Norman con drawdown shield (histéresis)
 
 Uso:
-    python -m gestion_cuantitativa.main
+    python main.py
 """
 
 import os
@@ -26,23 +26,23 @@ warnings.filterwarnings('ignore')
 # Añadir directorio padre al path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from gestion_cuantitativa.config import (
+from config import (
     BACKTEST_START, BACKTEST_END, OOS_START, OOS_END,
     SIMULATION_START, SIMULATION_END,
     INITIAL_WEALTH, ETF_CONFIGS, TRADING_DAYS_PER_YEAR,
     DEFAULT_LAMBDA_L, DEFAULT_LAMBDA_M
 )
-from gestion_cuantitativa.data.download import download_all_data
-from gestion_cuantitativa.backtest.engine import BacktestEngine
-from gestion_cuantitativa.strategies.benchmark_merton import BenchmarkMerton
-from gestion_cuantitativa.strategies.e1_dn_adaptive import E1_DN_Adaptive
-from gestion_cuantitativa.strategies.e2_dn_momentum import E2_DN_Momentum
-from gestion_cuantitativa.strategies.e3_dn_voltarget import E3_DN_VolTarget
-from gestion_cuantitativa.strategies.e4_dn_defensive import E4_DN_Defensive
-from gestion_cuantitativa.strategies.e5_dn_drawdown import E5_DN_Drawdown
-from gestion_cuantitativa.strategies.buyhold import BuyAndHold
-from gestion_cuantitativa.analysis.metrics import compute_metrics, compare_strategies
-from gestion_cuantitativa.analysis.plots import generate_all_plots
+from data.download import download_all_data
+from backtest.engine import BacktestEngine
+from strategies.benchmark_merton import BenchmarkMerton
+from strategies.e1_dn_adaptive import E1_DN_Adaptive
+from strategies.e2_dn_momentum import E2_DN_Momentum
+from strategies.e3_dn_voltarget import E3_DN_VolTarget
+from strategies.e4_dn_defensive import E4_DN_Defensive
+from strategies.e5_dn_drawdown import E5_DN_Drawdown
+from strategies.buyhold import BuyAndHold
+from analysis.metrics import compute_metrics, compare_strategies
+from analysis.plots import generate_all_plots
 
 
 def compute_effective_backtest_start(risky_data, backtest_start, warmup_days=252):

@@ -36,10 +36,10 @@ Ventajas sobre E4:
 """
 
 import numpy as np
-from gestion_cuantitativa.strategies.base import Strategy
-from gestion_cuantitativa.models.merton import clip_allocation
-from gestion_cuantitativa.models.davis_norman import dn_bands_asymptotic
-from gestion_cuantitativa.config import (
+from strategies.base import Strategy
+from models.merton import clip_allocation
+from models.davis_norman import dn_bands_asymptotic
+from config import (
     GAMMA, RECALIBRATION_FREQ, SIGMA_TARGET, MAX_LEVERAGE,
     E5_DD_ENTER, E5_DD_EXIT, E5_PEAK_WINDOW,
     E5_BAND_COST_MULT_NORMAL, E5_BAND_COST_MULT_DEFENSIVE,
