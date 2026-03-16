@@ -1,0 +1,14 @@
+.env
+.venv
+models/__pycache__/
+strategies/__pycache__/
+backtest/__pycache__/
+data/__pycache__/
+analysis/__pycache__/
+services/__pycache__/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
