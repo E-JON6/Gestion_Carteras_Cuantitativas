@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from Data.data_loader import download_market_data
 from Data.universe import get_defensive_ticker
 from main import run_v0
 
@@ -20,6 +21,20 @@ def _last_price_on_or_before(prices, review_date, ticker):
             f"No hay precio historico disponible para {ticker} en o antes de {review_date}."
         )
     return series.iloc[-1]
+
+
+def _load_benchmark_prices(start_date, end_date):
+    benchmark_ticker = "SPY"
+    try:
+        benchmark_market_data = download_market_data(
+            start_date=start_date,
+            end_date=end_date,
+            tickers=[benchmark_ticker],
+        )
+    except ValueError:
+        return None, None
+
+    return benchmark_ticker, benchmark_market_data["prices"]
 
 
 
@@ -37,6 +52,7 @@ def run_backtest_v0(
     sp500_value = 100.0
     previous_review_date = None
     xeon_ticker = get_defensive_ticker()
+    benchmark_ticker, benchmark_prices = _load_benchmark_prices(start_date, end_date)
 
     for review_date in review_dates:
         file_name = f"operaciones_{review_date.strftime('%Y%m%d')}.xlsx"
@@ -50,6 +66,11 @@ def run_backtest_v0(
         selected_etfs = [ticker for ticker in result["selected_etfs"] if ticker != xeon_ticker]
         final_weights = result["dn_result"]["final_weights"]
         weight_xeon = result["dn_result"]["weight_xeon"]
+
+        if benchmark_ticker is None:
+            benchmark_ticker = next((ticker for ticker in prices.columns if ticker != xeon_ticker), None)
+            if benchmark_ticker is None:
+                raise ValueError("No se pudo resolver un benchmark para el backtest.")
 
         if previous_review_date is None:
             wealth_rows.append(
@@ -74,8 +95,17 @@ def run_backtest_v0(
             xeon_return = xeon_end / xeon_start - 1
             strategy_return += weight_xeon * xeon_return
 
-            spy_start = _last_price_on_or_before(prices, previous_review_date, "SPY")
-            spy_end = _last_price_on_or_before(prices, review_date, "SPY")
+            benchmark_price_frame = benchmark_prices if benchmark_prices is not None else prices
+            spy_start = _last_price_on_or_before(
+                benchmark_price_frame,
+                previous_review_date,
+                benchmark_ticker,
+            )
+            spy_end = _last_price_on_or_before(
+                benchmark_price_frame,
+                review_date,
+                benchmark_ticker,
+            )
             sp500_return = spy_end / spy_start - 1
 
             strategy_value = strategy_value * (1 + strategy_return)

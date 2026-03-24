@@ -22,17 +22,37 @@ except ModuleNotFoundError:
     from universe import get_universe, get_universe_tickers
 
 PRICE_FIELDS = ("Close", "Adj Close")
+EXECUTION_LOOKAHEAD_DAYS = 5
 
 
-def _download_from_yfinance(**kwargs) -> pd.DataFrame:
+def _download_from_yfinance(**kwargs) -> tuple[pd.DataFrame, str]:
     buffer = io.StringIO()
     with redirect_stdout(buffer), redirect_stderr(buffer):
-        return yf.download(
+        raw_data = yf.download(
             progress=False,
             group_by="column",
             threads=False,
             **kwargs,
         )
+    return raw_data, buffer.getvalue()
+
+
+
+def _provider_message_snippet(provider_output: str, max_lines: int = 3, max_chars: int = 320) -> str:
+    lines = [line.strip() for line in str(provider_output).splitlines() if line.strip()]
+    if not lines:
+        return ""
+
+    snippet = " | yfinance: " + " || ".join(lines[-max_lines:])
+    if len(snippet) > max_chars:
+        snippet = snippet[: max_chars - 3] + "..."
+    return snippet
+
+
+
+def _with_provider_context(message: str, provider_output: str) -> str:
+    return f"{message}{_provider_message_snippet(provider_output)}"
+
 
 
 def _normalize_tickers(tickers: str | Iterable[str] | None) -> list[str]:
@@ -51,6 +71,7 @@ def _normalize_tickers(tickers: str | Iterable[str] | None) -> list[str]:
     return normalized_tickers
 
 
+
 def _extract_from_multiindex(raw_data: pd.DataFrame) -> pd.DataFrame:
     first_level = set(raw_data.columns.get_level_values(0))
     second_level = set(raw_data.columns.get_level_values(1))
@@ -61,25 +82,37 @@ def _extract_from_multiindex(raw_data: pd.DataFrame) -> pd.DataFrame:
         if field in second_level:
             return raw_data.xs(field, axis=1, level=1).copy()
 
-    raise ValueError(
-        "No se encontro una columna Close o Adj Close en la descarga de yfinance."
-    )
+    raise ValueError("No se encontro una columna Close o Adj Close en la descarga de yfinance.")
 
 
-def _extract_price_frame(raw_data: pd.DataFrame, requested_tickers: list[str]) -> pd.DataFrame:
+
+def _extract_price_frame(
+    raw_data: pd.DataFrame,
+    requested_tickers: list[str],
+    provider_output: str = "",
+) -> pd.DataFrame:
     """Extrae un DataFrame de precios de cierre desde la salida de yfinance."""
     if raw_data.empty:
         raise ValueError(
-            "La descarga de yfinance vino vacia para los tickers solicitados; no hay tickers validos con datos en el rango pedido."
+            _with_provider_context(
+                "La descarga de yfinance vino vacia para los tickers solicitados; no hay tickers validos con datos en el rango pedido.",
+                provider_output,
+            )
         )
 
     if isinstance(raw_data.columns, pd.MultiIndex):
-        prices = _extract_from_multiindex(raw_data)
+        try:
+            prices = _extract_from_multiindex(raw_data)
+        except ValueError as exc:
+            raise ValueError(_with_provider_context(str(exc), provider_output)) from exc
     else:
         price_column = next((field for field in PRICE_FIELDS if field in raw_data.columns), None)
         if price_column is None:
             raise ValueError(
-                "No se encontro una columna Close o Adj Close en la descarga de yfinance."
+                _with_provider_context(
+                    "No se encontro una columna Close o Adj Close en la descarga de yfinance.",
+                    provider_output,
+                )
             )
         prices = raw_data[[price_column]].copy()
         if len(requested_tickers) == 1:
@@ -100,9 +133,15 @@ def _extract_price_frame(raw_data: pd.DataFrame, requested_tickers: list[str]) -
             prices = prices[available_tickers]
 
     if prices.empty:
-        raise ValueError("La descarga no contiene precios utilizables despues de la limpieza.")
+        raise ValueError(
+            _with_provider_context(
+                "La descarga no contiene precios utilizables despues de la limpieza.",
+                provider_output,
+            )
+        )
 
     return prices
+
 
 
 def _build_metadata(available_tickers: list[str]) -> list[dict[str, str]]:
@@ -126,6 +165,7 @@ def _build_metadata(available_tickers: list[str]) -> list[dict[str, str]]:
     return metadata
 
 
+
 def download_market_data(
     start_date: str = "2018-01-01",
     end_date: str | None = None,
@@ -146,20 +186,23 @@ def download_market_data(
     if not selected_tickers:
         raise ValueError("No se recibio ningun ticker valido para descargar datos.")
 
-    raw_data = _download_from_yfinance(
+    raw_data, provider_output = _download_from_yfinance(
         tickers=selected_tickers,
         start=start_date,
         end=end_date,
         auto_adjust=auto_adjust,
     )
 
-    prices = _extract_price_frame(raw_data, selected_tickers)
+    prices = _extract_price_frame(raw_data, selected_tickers, provider_output=provider_output)
     prices = prices.dropna(axis=1, how="all")
     available_tickers = [ticker for ticker in selected_tickers if ticker in prices.columns]
 
     if not available_tickers:
         raise ValueError(
-            "No hay tickers validos con precios descargados en el rango solicitado."
+            _with_provider_context(
+                "No hay tickers validos con precios descargados en el rango solicitado.",
+                provider_output,
+            )
         )
 
     prices = prices[available_tickers]
@@ -196,6 +239,16 @@ def compute_transaction_costs_v0(
 
 
 
+def _build_execution_fallback(clean_prices: pd.DataFrame, last_prices: dict[str, float]) -> dict:
+    return {
+        "date": clean_prices.index[-1],
+        "prices": last_prices,
+        "used_next_day": False,
+        "execution_source": "last_available",
+    }
+
+
+
 def get_execution_data_v0(
     tickers: list[str] | str,
     prices_df: pd.DataFrame,
@@ -215,40 +268,36 @@ def get_execution_data_v0(
     last_timestamp = pd.Timestamp(clean_prices.index[-1])
     last_date = last_timestamp.normalize()
     next_date = last_date + pd.Timedelta(days=1)
+    window_end = next_date + pd.Timedelta(days=EXECUTION_LOOKAHEAD_DAYS)
     last_prices = clean_prices.iloc[-1].to_dict()
+    fallback = _build_execution_fallback(clean_prices, last_prices)
 
-    raw_data = _download_from_yfinance(
+    raw_data, _provider_output = _download_from_yfinance(
         tickers=selected_tickers,
         start=next_date.strftime("%Y-%m-%d"),
-        end=(next_date + pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+        end=window_end.strftime("%Y-%m-%d"),
         auto_adjust=auto_adjust,
     )
 
     if raw_data.empty:
-        return {
-            "date": clean_prices.index[-1],
-            "prices": last_prices,
-            "used_next_day": False,
-        }
+        return fallback
 
     try:
         future_prices = _extract_price_frame(raw_data, selected_tickers).dropna(axis=1, how="all")
     except ValueError:
-        return {
-            "date": clean_prices.index[-1],
-            "prices": last_prices,
-            "used_next_day": False,
-        }
+        return fallback
+
+    if future_prices.empty:
+        return fallback
 
     normalized_index = pd.Index(pd.to_datetime(future_prices.index).normalize())
-    matching_rows = future_prices.loc[normalized_index == next_date]
+    max_execution_date = next_date + pd.Timedelta(days=EXECUTION_LOOKAHEAD_DAYS - 1)
+    matching_rows = future_prices.loc[
+        (normalized_index >= next_date) & (normalized_index <= max_execution_date)
+    ].dropna(how="all")
 
     if matching_rows.empty:
-        return {
-            "date": clean_prices.index[-1],
-            "prices": last_prices,
-            "used_next_day": False,
-        }
+        return fallback
 
     execution_prices = last_prices.copy()
     execution_prices.update(matching_rows.iloc[0].dropna().to_dict())
@@ -256,6 +305,7 @@ def get_execution_data_v0(
         "date": matching_rows.index[0],
         "prices": execution_prices,
         "used_next_day": True,
+        "execution_source": "future_session",
     }
 
 
