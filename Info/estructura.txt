@@ -1,0 +1,44 @@
+proyecto/
+├── config.py                     # Parámetros globales (γ, umbrales, ventanas, etc.)
+├── main.py                       # Orquestación principal: ejecuta un backtest completo
+|── main_backtest.py
+|── main_walkforward.py 
+|
+├── backtest/       # Ejecuta backtest  y guarda resultados
+|   ├── backtest.py            # Descarga y gestión de precios, cálculo de retornos 
+|
+├── walkforward/       # Ejecuta walk‑forward y guarda resultados
+|   ├── walkforward.py            # Descarga y gestión de precios, cálculo de retornos 
+│
+├── data/
+│   ├── data_loader.py            # Descarga y gestión de precios, cálculo de retornos
+│   └── universe.py               # Lista de ETFs con metadatos (ticker, nombre, tipo)
+│
+├── metrics/
+│   ├── sharpe.py
+│   ├── omega.py
+│   └── etf_selector.py               # Combina métricas y selecciona los K mejores ETFs
+│
+├── models/
+│   ├── black_litterman.py        # Prior de equilibrio, construcción de views, posterior
+│   ├── merton.py                 # Pesos óptimos de Merton multivariante
+│   └── davis_norman_fake.py            # Política de bandas de inacción (Davis‑Norman falso)
+│
+├── portfolio/
+│   ├── registrador.py                  # Registro de operaciones y estado de la cartera
+|   ├── enviar_correo.py                # Envío de la operación
+│
+├── backtest/
+│   ├── engine.py                 # Simulación de un período continuo (día a día)
+│   ├── walkforward.py            # Divide en ventanas y ejecuta optimización paramétrica
+│   └── metrics.py                # Cálculo de métricas de rendimiento (Sharpe, drawdown...)
+│
+├── simulator/
+│   ├── backtest_simulation.py                  # Simular backtest
+|   ├── operation_simulation.py                 # Simular operación en vivo 
+|
+├── visualization/
+│   ├── plots.py                  # Generación de gráficos (evolución de cartera, pesos, etc.)
+│
+├── results/                      # Carpeta para guardar resultados (CSV, logs, figuras)
+└── notebooks_sucio/                    # Jupyter notebooks para exploración y análisis
