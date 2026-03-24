@@ -9,7 +9,17 @@ from pathlib import Path
 import pandas as pd
 
 from Data.data_loader import get_execution_data_v0
-from Data.universe import get_universe
+from Data.universe import get_defensive_ticker
+
+
+def _resolve_price(ticker, execution_prices, market_prices):
+    price = execution_prices.get(ticker)
+    if pd.isna(price):
+        if ticker not in market_prices.columns:
+            raise ValueError(f"No hay precio disponible para el ticker {ticker}.")
+        price = market_prices[ticker].dropna().iloc[-1]
+    return price
+
 
 
 def run_registrador_v0(
@@ -24,30 +34,27 @@ def run_registrador_v0(
     execution_data = get_execution_data_v0(market_data["tickers"], market_data["prices"])
     execution_prices = execution_data["prices"]
     transaction_costs = market_data["transaction_costs"]
-    xeon_ticker = next(etf["ticker"] for etf in get_universe() if etf["role"] == "defensive")
+    xeon_ticker = get_defensive_ticker()
 
     orders = []
     target_positions = {}
     used_value = 0.0
 
     for ticker, target_weight in target_weights.items():
-        price = execution_prices[ticker]
-        if pd.isna(price):
-            price = market_data["prices"][ticker].dropna().iloc[-1]
+        if ticker == xeon_ticker:
+            continue
+
+        price = _resolve_price(ticker, execution_prices, market_data["prices"])
         target_quantity = int(total_value * target_weight / price)
         target_positions[ticker] = target_quantity
         used_value += target_quantity * price
 
-    xeon_price = execution_prices[xeon_ticker]
-    if pd.isna(xeon_price):
-        xeon_price = market_data["prices"][xeon_ticker].dropna().iloc[-1]
+    xeon_price = _resolve_price(xeon_ticker, execution_prices, market_data["prices"])
     xeon_target_value = max(total_value - used_value, 0.0)
     target_positions[xeon_ticker] = xeon_target_value / xeon_price
 
     for ticker, target_quantity in target_positions.items():
-        price = execution_prices[ticker]
-        if pd.isna(price):
-            price = market_data["prices"][ticker].dropna().iloc[-1]
+        price = _resolve_price(ticker, execution_prices, market_data["prices"])
         current_quantity = current_positions.get(ticker, 0.0)
         rebalance_quantity = target_quantity - current_quantity
 

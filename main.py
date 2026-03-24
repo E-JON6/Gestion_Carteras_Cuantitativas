@@ -13,6 +13,21 @@ from metricas.omega import compute_omega_scores_v0
 from portfolio.registrador import run_registrador_v0
 
 
+def _get_risk_returns(market_data):
+    metadata_by_ticker = {item["ticker"]: item for item in market_data["metadata"]}
+    risk_tickers = [
+        ticker
+        for ticker in market_data["tickers"]
+        if metadata_by_ticker.get(ticker, {}).get("role") != "defensive"
+    ]
+
+    if not risk_tickers:
+        raise ValueError("No hay ETFs de riesgo disponibles para ejecutar el pipeline v0.")
+
+    return market_data["returns"][risk_tickers]
+
+
+
 def run_v0(
     start_date="2024-01-01",
     end_date="2024-03-01",
@@ -20,7 +35,7 @@ def run_v0(
     output_path="results/operaciones_rebalanceo.xlsx",
 ):
     market_data = download_market_data(start_date=start_date, end_date=end_date)
-    returns_df = market_data["returns"]
+    returns_df = _get_risk_returns(market_data)
 
     if metric_name == "omega":
         scores = compute_omega_scores_v0(returns_df)
