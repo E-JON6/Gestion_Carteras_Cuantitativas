@@ -10,3 +10,4 @@ __pycache__/
 *.pyzwz
 *.pyzwzw
 *.pyzwzwz
+.DS_Store
