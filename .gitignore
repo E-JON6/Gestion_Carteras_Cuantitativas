@@ -11,3 +11,4 @@ __pycache__/
 *.pyzwzw
 *.pyzwzwz
 .DS_Store
+results/operaciones_rebalanceo.xlsx
