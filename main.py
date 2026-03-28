@@ -44,7 +44,7 @@ def run_v0(
 
     selected_etfs = select_top_etfs_v0(scores, top_n=5)
     bl_result = run_black_litterman_v0(returns_df, selected_etfs, scores)
-    merton_result = run_merton_v0(bl_result)
+    merton_result = run_merton_v0(bl_result, risk_free_rate=0.01)
     current_weights = {ticker: 0.0 for ticker in merton_result["selected_etfs"]}
     dn_result = run_davis_norman_fake_v0(current_weights, merton_result["weights"])
     current_positions = {ticker: 0.0 for ticker in merton_result["selected_etfs"]}
