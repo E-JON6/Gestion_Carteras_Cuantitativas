@@ -1,19 +1,13 @@
 """
-Selector version 0.
-Recibe: un Series con score por ETF.
-Devuelve: los 5 ETFs con mejor score.
+Created on Tue Mar 24 12:48:39 2026
+
+@author: andre
 """
+import numpy as np
+import pandas as pd
 
+def select_top_views(scores, top_n=3):
+    clean_scores = scores.dropna().sort_values(ascending=False)
+    return list(clean_scores.head(top_n).index)
 
-def select_top_etfs_v0(scores, top_n=5):
-    return list(scores.sort_values(ascending=False).head(top_n).index)
-
-
-if __name__ == "__main__":
-    import pandas as pd
-
-    ejemplo = pd.Series(
-        [5, 4, 3, 2, 1],
-        index=["SPY", "VGK", "EWJ", "EEM", "XEON.DE"],
-    )
-    print(select_top_etfs_v0(ejemplo))
+    
