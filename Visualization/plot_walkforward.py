@@ -4,7 +4,7 @@ Recibe: el CSV del walkforward.
 Devuelve: un grafico guardado en results.
 """
 
-from Visualization.plots import plot_walkforward_v0
+from plots import plot_walkforward_v0
 
 
 if __name__ == "__main__":

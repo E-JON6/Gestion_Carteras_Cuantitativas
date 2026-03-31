@@ -4,7 +4,7 @@ Recibe: los CSVs del backtest.
 Devuelve: graficos guardados en results.
 """
 
-from Visualization.plots import plot_backtest_v0, plot_strategy_vs_sp500_v0
+from plots import plot_backtest_v0, plot_strategy_vs_sp500_v0
 
 
 if __name__ == "__main__":
