@@ -5,11 +5,11 @@ Devuelve: datos descargados, scores, ETFs seleccionados, Black-Litterman, Merton
 """
 
 from Data.data_loader import download_market_data
-from Models.black_litterman import run_black_litterman_v0
+from Models.black_litterman import run_black_litterman
 from Models.davis_norman_fake import run_davis_norman_fake_v0
 from Models.merton import run_merton_v0
-from metricas.etf_selector import select_top_etfs_v0
-from metricas.omega import compute_omega_scores_v0
+from metricas.etf_selector import select_top_etfs
+from metricas.omega import compute_omega_scores
 from portfolio.registrador import run_registrador_v0
 
 
@@ -38,12 +38,12 @@ def run_v0(
     returns_df = _get_risk_returns(market_data)
 
     if metric_name == "omega":
-        scores = compute_omega_scores_v0(returns_df)
+        scores = compute_omega_scores(returns_df)
     else:
         raise ValueError("La version 0 solo soporta la metrica omega.")
 
-    selected_etfs = select_top_etfs_v0(scores, top_n=5)
-    bl_result = run_black_litterman_v0(returns_df, selected_etfs, scores)
+    selected_etfs = select_top_etfs(scores, top_n=5)
+    bl_result = run_black_litterman(returns_df, selected_etfs, scores)
     merton_result = run_merton_v0(bl_result, risk_free_rate=0.01)
     current_weights = {ticker: 0.0 for ticker in merton_result["selected_etfs"]}
     dn_result = run_davis_norman_fake_v0(current_weights, merton_result["weights"])
