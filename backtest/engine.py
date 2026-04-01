@@ -1,40 +1,53 @@
-"""
-Engine de backtest version 0.
-Recibe: un rango temporal y una metrica.
-Devuelve: un resumen simple del backtest.
-"""
+"""Wrapper de compatibilidad sobre `main_black_litterman.run_backtest`."""
+
+from __future__ import annotations
 
 from pathlib import Path
 
 import pandas as pd
 
-from Data.data_loader import download_market_data
-from Data.universe import get_defensive_ticker
-from main import run_v0
+from main_black_litterman import run_backtest
 
 
 
-def _last_price_on_or_before(prices, review_date, ticker):
-    series = prices.loc[:review_date, ticker].dropna()
-    if series.empty:
-        raise ValueError(
-            f"No hay precio historico disponible para {ticker} en o antes de {review_date}."
+def _build_backtest_rows(history: pd.DataFrame, xeon_ticker: str) -> pd.DataFrame:
+    if history.empty:
+        return pd.DataFrame(columns=["Date", "Selected ETFs", "Rebalance", "Weight XEON", "Trade Cost"])
+
+    rows = []
+    weight_xeon_col = f"weight_{xeon_ticker}"
+    weight_cols = [column for column in history.columns if column.startswith("weight_") and column != weight_xeon_col]
+    for date, row in history.iterrows():
+        selected = []
+        for column in weight_cols:
+            weight = float(row.get(column, 0.0))
+            if weight > 1e-6:
+                selected.append(column.removeprefix("weight_"))
+        rows.append(
+            {
+                "Date": pd.Timestamp(date).strftime("%Y-%m-%d"),
+                "Selected ETFs": ", ".join(selected),
+                "Rebalance": bool(row.get("rebalance", False)),
+                "Weight XEON": float(row.get(weight_xeon_col, 0.0)),
+                "Trade Cost": float(row.get("trade_cost", 0.0)),
+            }
         )
-    return series.iloc[-1]
+    return pd.DataFrame(rows)
 
 
-def _load_benchmark_prices(start_date, end_date):
-    benchmark_ticker = "SPY"
-    try:
-        benchmark_market_data = download_market_data(
-            start_date=start_date,
-            end_date=end_date,
-            tickers=[benchmark_ticker],
-        )
-    except ValueError:
-        return None, None
 
-    return benchmark_ticker, benchmark_market_data["prices"]
+def _build_wealth_rows(history: pd.DataFrame, benchmark_wealth) -> pd.DataFrame:
+    if history.empty:
+        return pd.DataFrame(columns=["Date", "Strategy", "SP500"])
+
+    wealth = history[["wealth"]].rename(columns={"wealth": "Strategy"}).copy()
+    if benchmark_wealth is None:
+        wealth["SP500"] = pd.NA
+    else:
+        wealth["SP500"] = benchmark_wealth.reindex(wealth.index).ffill()
+    wealth = wealth.reset_index().rename(columns={wealth.index.name or "index": "Date"})
+    wealth["Date"] = pd.to_datetime(wealth["Date"]).dt.strftime("%Y-%m-%d")
+    return wealth
 
 
 
@@ -45,139 +58,31 @@ def run_backtest_v0(
     freq="ME",
     output_path="results/backtest_resumen.csv",
 ):
-    review_dates = pd.date_range(start=start_date, end=end_date, freq=freq)
-    rows = []
-    wealth_rows = []
-    strategy_value = 100.0
-    sp500_value = 100.0
-    previous_review_date = None
-    xeon_ticker = get_defensive_ticker()
-    benchmark_ticker, benchmark_prices = _load_benchmark_prices(start_date, end_date)
+    del metric_name, freq
+    result = run_backtest(start=start_date, end=end_date, save_results=False)
+    history = result["history"]
+    xeon_ticker = result["xeon_ticker"]
 
-    for review_date in review_dates:
-        file_name = f"operaciones_{review_date.strftime('%Y%m%d')}.xlsx"
-        result = run_v0(
-            start_date=start_date,
-            end_date=review_date.strftime("%Y-%m-%d"),
-            metric_name=metric_name,
-            output_path=f"results/{file_name}",
-        )
-        prices = result["market_data"]["prices"]
-        selected_etfs = [ticker for ticker in result["selected_etfs"] if ticker != xeon_ticker]
-        final_weights = result["dn_result"]["final_weights"]
-        weight_xeon = result["dn_result"]["weight_xeon"]
-
-        if benchmark_ticker is None:
-            benchmark_ticker = next((ticker for ticker in prices.columns if ticker != xeon_ticker), None)
-            if benchmark_ticker is None:
-                raise ValueError("No se pudo resolver un benchmark para el backtest.")
-
-        if previous_review_date is None:
-            wealth_rows.append(
-                {
-                    "Date": review_date.strftime("%Y-%m-%d"),
-                    "Strategy": strategy_value,
-                    "SP500": sp500_value,
-                }
-            )
-            previous_review_date = review_date
-        else:
-            strategy_return = 0.0
-
-            for ticker in selected_etfs:
-                start_price = _last_price_on_or_before(prices, previous_review_date, ticker)
-                end_price = _last_price_on_or_before(prices, review_date, ticker)
-                ticker_return = end_price / start_price - 1
-                strategy_return += final_weights[ticker] * ticker_return
-
-            xeon_start = _last_price_on_or_before(prices, previous_review_date, xeon_ticker)
-            xeon_end = _last_price_on_or_before(prices, review_date, xeon_ticker)
-            xeon_return = xeon_end / xeon_start - 1
-            strategy_return += weight_xeon * xeon_return
-
-            benchmark_price_frame = benchmark_prices if benchmark_prices is not None else prices
-            spy_start = _last_price_on_or_before(
-                benchmark_price_frame,
-                previous_review_date,
-                benchmark_ticker,
-            )
-            spy_end = _last_price_on_or_before(
-                benchmark_price_frame,
-                review_date,
-                benchmark_ticker,
-            )
-            sp500_return = spy_end / spy_start - 1
-
-            strategy_value = strategy_value * (1 + strategy_return)
-            sp500_value = sp500_value * (1 + sp500_return)
-
-            wealth_rows.append(
-                {
-                    "Date": review_date.strftime("%Y-%m-%d"),
-                    "Strategy": strategy_value,
-                    "SP500": sp500_value,
-                }
-            )
-            previous_review_date = review_date
-
-        rows.append(
-            {
-                "Date": review_date.strftime("%Y-%m-%d"),
-                "Metric": result["metric_name"],
-                "Selected ETFs": ", ".join(selected_etfs),
-                "Rebalance": result["dn_result"]["rebalance"],
-                "Weight XEON": result["dn_result"]["weight_xeon"],
-                "Orders File": result["registrador_result"]["output_path"],
-            }
-        )
-
-    backtest_df = pd.DataFrame(rows)
-    wealth_df = pd.DataFrame(wealth_rows)
+    backtest_df = _build_backtest_rows(history, xeon_ticker)
+    wealth_df = _build_wealth_rows(history, result.get("benchmark_wealth"))
     metrics_df = pd.DataFrame(
         [
-            {
-                "Metric": "Strategy Final Value",
-                "Value": wealth_df["Strategy"].iloc[-1] if not wealth_df.empty else None,
-            },
-            {
-                "Metric": "SP500 Final Value",
-                "Value": wealth_df["SP500"].iloc[-1] if not wealth_df.empty else None,
-            },
-            {
-                "Metric": "Strategy Total Return",
-                "Value": (wealth_df["Strategy"].iloc[-1] / wealth_df["Strategy"].iloc[0] - 1)
-                if len(wealth_df) > 1
-                else 0.0,
-            },
-            {
-                "Metric": "SP500 Total Return",
-                "Value": (wealth_df["SP500"].iloc[-1] / wealth_df["SP500"].iloc[0] - 1)
-                if len(wealth_df) > 1
-                else 0.0,
-            },
-            {
-                "Metric": "Number of Rebalances",
-                "Value": int(backtest_df["Rebalance"].sum()) if not backtest_df.empty else 0,
-            },
-            {
-                "Metric": "Average Weight XEON",
-                "Value": backtest_df["Weight XEON"].mean() if not backtest_df.empty else 0.0,
-            },
+            {"Metric": "Sharpe Ratio", "Value": result["sharpe"]},
+            {"Metric": "CAGR", "Value": result["cagr"]},
+            {"Metric": "Max Drawdown", "Value": result["max_dd"]},
+            {"Metric": "Average RF", "Value": result["avg_rf"]},
+            {"Metric": "Number of Rebalances", "Value": int(backtest_df["Rebalance"].sum()) if not backtest_df.empty else 0},
+            {"Metric": "Average Weight XEON", "Value": backtest_df["Weight XEON"].mean() if not backtest_df.empty else 0.0},
         ]
     )
+
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
     backtest_df.to_csv(output_file, index=False)
-    if output_file.stem == "backtest_resumen":
-        wealth_file = output_file.with_name("wealth_history.csv")
-        metrics_file = output_file.with_name("Metrics.xlsx")
-    else:
-        wealth_file = output_file.with_name(f"{output_file.stem}_wealth_history.csv")
-        metrics_file = output_file.with_name(f"{output_file.stem}_Metrics.xlsx")
-
+    wealth_file = output_file.with_name("wealth_history.csv") if output_file.stem == "backtest_resumen" else output_file.with_name(f"{output_file.stem}_wealth_history.csv")
+    metrics_file = output_file.with_name("Metrics.xlsx") if output_file.stem == "backtest_resumen" else output_file.with_name(f"{output_file.stem}_Metrics.xlsx")
     wealth_df.to_csv(wealth_file, index=False)
     backtest_excel_file = output_file.with_suffix(".xlsx")
-
     backtest_df.to_excel(backtest_excel_file, index=False)
     with pd.ExcelWriter(metrics_file) as writer:
         metrics_df.to_excel(writer, sheet_name="Metrics", index=False)

@@ -43,3 +43,15 @@ BL_MAX_SECTOR_WEIGHT = 0.25
 BL_RECALIB_FREQ      = 5
 BL_VOL_CAUTION_THR   = 0.20
 BL_VOL_CRISIS_THR    = 0.30
+
+# ============================================================
+# CONFIGURACIÓN DE MOTOR / BACKTEST
+# ============================================================
+
+INITIAL_WEALTH      = 10_000_000
+DATA_START          = "2014-01-01"
+BACKTEST_END        = None
+RISK_FREE_FALLBACK  = 0.025
+WARMUP_DAYS         = 252
+OUTPUT_DIR_BL       = "outputs/bl_omega"
+OUTPUT_DIR_WF       = "outputs/walk_forward"

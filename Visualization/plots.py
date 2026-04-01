@@ -1,69 +1,40 @@
-"""
-Plots version 0.
-Recibe: CSVs de results.
-Devuelve: graficos simples guardados en results.
-"""
+"""Wrappers de compatibilidad sobre los gráficos BL-Omega."""
+
+from __future__ import annotations
 
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import pandas as pd
 
-
-def plot_strategy_vs_sp500_v0(
-    wealth_csv="results/wealth_history.csv",
-    output_path="results/plot_strategy_vs_sp500.png",
-):
-    wealth_df = pd.read_csv(wealth_csv)
-    wealth_df["Date"] = pd.to_datetime(wealth_df["Date"])
-
-    plt.figure(figsize=(10, 5))
-    plt.plot(wealth_df["Date"], wealth_df["Strategy"], label="Strategy")
-    plt.plot(wealth_df["Date"], wealth_df["SP500"], label="SP500")
-    plt.title("Strategy vs SP500")
-    plt.xlabel("Date")
-    plt.ylabel("Base 100")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(output_path)
-    plt.close()
-
-    return output_path
+from plots_bl import (
+    plot_drawdown,
+    plot_walk_forward_sharpe,
+    plot_xeon_weight,
+    plot_wealth_curves,
+)
 
 
-def plot_backtest_v0(
-    backtest_csv="results/backtest_resumen.csv",
-    output_path="results/plot_backtest.png",
-):
-    backtest_df = pd.read_csv(backtest_csv)
-    backtest_df["Date"] = pd.to_datetime(backtest_df["Date"])
-
-    plt.figure(figsize=(10, 5))
-    plt.plot(backtest_df["Date"], backtest_df["Weight XEON"], marker="o")
-    plt.title("Peso XEON en Backtest")
-    plt.xlabel("Date")
-    plt.ylabel("Weight XEON")
-    plt.tight_layout()
-    plt.savefig(output_path)
-    plt.close()
-
-    return output_path
+def plot_strategy_vs_sp500_v0(wealth_csv="outputs/bl_omega/wealth_history.csv", output_path="results/plot_strategy_vs_sp500.png"):
+    history_df = pd.read_csv(wealth_csv, index_col=0, parse_dates=True)
+    wealth = pd.to_numeric(history_df["wealth"], errors="coerce").dropna()
+    results_dict = {"BL-Omega": {"wealth": wealth}}
+    plot_wealth_curves(results_dict, save_path=output_path, title="BL-Omega")
+    return str(Path(output_path))
 
 
-def plot_walkforward_v0(
-    walkforward_csv="results/walkforward_resumen.csv",
-    output_path="results/plot_walkforward.png",
-):
-    walkforward_df = pd.read_csv(walkforward_csv)
-    walkforward_df["Test End"] = pd.to_datetime(walkforward_df["Test End"])
+def plot_backtest_v0(backtest_csv="outputs/bl_omega/wealth_history.csv", output_path="results/plot_backtest.png"):
+    history_df = pd.read_csv(backtest_csv, index_col=0, parse_dates=True)
+    plot_xeon_weight(history_df, save_path=output_path)
+    return str(Path(output_path))
 
-    plt.figure(figsize=(10, 5))
-    plt.plot(walkforward_df["Test End"], walkforward_df["Weight XEON"], marker="o")
-    plt.title("Peso XEON en Walkforward")
-    plt.xlabel("Test End")
-    plt.ylabel("Weight XEON")
-    plt.tight_layout()
-    plt.savefig(output_path)
-    plt.close()
 
-    return output_path
+def plot_walkforward_v0(walkforward_csv="outputs/walk_forward/resultados_wf.csv", output_path="results/plot_walkforward.png"):
+    summary_df = pd.read_csv(walkforward_csv)
+    plot_walk_forward_sharpe(summary_df, save_path=output_path)
+    return str(Path(output_path))
+
+
+def plot_drawdown_v0(backtest_csv="outputs/bl_omega/wealth_history.csv", output_path="results/plot_drawdown.png"):
+    history_df = pd.read_csv(backtest_csv, index_col=0, parse_dates=True)
+    plot_drawdown({"BL-Omega": {"wealth": history_df["wealth"]}}, save_path=output_path)
+    return str(Path(output_path))

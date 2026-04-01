@@ -1,8 +1,4 @@
-"""
-Main del backtest version 0.
-Recibe: fechas y metrica.
-Devuelve: un resumen guardado en results.
-"""
+"""Entrada principal de compatibilidad para el backtest BL-Omega."""
 
 from backtest.engine import run_backtest_v0
 
@@ -14,4 +10,4 @@ if __name__ == "__main__":
         metric_name="omega",
     )
     print("Backtest guardado en:", result["output_path"])
-    print(result["backtest"])
+    print(result["metrics"])
