@@ -3,6 +3,7 @@ from .cost_aware import CostAwareFilter
 from .top_n import TopNFilter
 from .top_n_by_weight import TopNByWeightFilter
 from .frozen import FrozenAssetManager
+from .min_weight import MinWeightFilter
 
 __all__ = [
     "NoTradeBandFilter",
@@ -10,4 +11,5 @@ __all__ = [
     "TopNFilter",
     "TopNByWeightFilter",
     "FrozenAssetManager",
+    "MinWeightFilter",
 ]
