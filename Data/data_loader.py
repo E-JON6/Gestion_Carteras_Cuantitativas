@@ -180,7 +180,7 @@ def download_market_data(
     - prices: DataFrame de precios
     - returns: DataFrame de retornos porcentuales
     - metadata: lista del universo disponible
-    - transaction_costs: diccionario simple por ticker
+    - transaction_costs: ct por ticker (mismo valor; fraccion del nominal por lado, ver config TX_COST_*)
     """
     selected_tickers = _normalize_tickers(tickers)
     if not selected_tickers:
@@ -222,20 +222,37 @@ def download_market_data(
 
 def compute_transaction_costs_v0(
     prices_df: pd.DataFrame,
-    spread: float = 0.5,
-    extra_fee: float = 0.0001,
-    window: int = 21,
+    per_side_pct: float | None = None,
+    min_pct: float | None = None,
+    max_pct: float | None = None,
 ) -> dict[str, float]:
+    """
+    Coste por operacion y lado (ct) como fraccion del nominal, homogeneo por ETF.
+
+    Antes se usaba 0.5*spread$/precio + fee, lo que en ETFs de precio bajo
+    generaba tasas del orden de varios % (irreal frente a un bróker ~0,05–0,12%).
+
+    Valores por defecto desde config: TX_COST_PER_SIDE y limites MIN/MAX.
+    """
+    try:
+        import config as _cfg
+
+        if per_side_pct is None:
+            per_side_pct = float(getattr(_cfg, "TX_COST_PER_SIDE", 0.0008))
+        if min_pct is None:
+            min_pct = float(getattr(_cfg, "TX_COST_PER_SIDE_MIN", 0.0005))
+        if max_pct is None:
+            max_pct = float(getattr(_cfg, "TX_COST_PER_SIDE_MAX", 0.0012))
+    except ImportError:
+        per_side_pct = per_side_pct if per_side_pct is not None else 0.0008
+        min_pct = min_pct if min_pct is not None else 0.0005
+        max_pct = max_pct if max_pct is not None else 0.0012
+
+    rate = max(min_pct, min(max_pct, float(per_side_pct)))
+
     if prices_df.empty:
         return {}
-
-    recent_prices = prices_df.ffill().tail(max(window, 1))
-    if recent_prices.empty:
-        return {ticker: float(extra_fee) for ticker in prices_df.columns}
-
-    daily_costs = 0.5 * spread / recent_prices.replace(0, pd.NA) + extra_fee
-    daily_costs = daily_costs.fillna(extra_fee)
-    return {ticker: float(cost) for ticker, cost in daily_costs.mean().to_dict().items()}
+    return {ticker: rate for ticker in prices_df.columns}
 
 
 

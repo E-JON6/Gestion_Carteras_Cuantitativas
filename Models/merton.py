@@ -19,16 +19,18 @@ import numpy as np
 # PARÁMETROS
 # ============================================================
 
-GAMMA             = -2      # Parámetro de utilidad. RRA = 1 - GAMMA = 3.
-N_TOP_ASSETS      = 5       # Máximo de ETFs de riesgo en cartera simultáneamente
+GAMMA             = -1      # Parámetro de utilidad. RRA = 1 - GAMMA = 2.
+N_TOP_ASSETS      = 30      # Sin limite practico: puede invertir en todos los ETFs
 MAX_WEIGHT        = 0.40    # Peso máximo por ETF individual (40%)
 MIN_WEIGHT        = 0.01    # Peso mínimo para considerar que hay posición (1%)
-MAX_SECTOR_WEIGHT = 0.25    # Peso máximo por categoría sectorial (25%)
+MAX_SECTOR_WEIGHT = 0.50    # Peso máximo por categoría sectorial (30%)
 FREEZE_EXIT_THR   = 0.02    # Si un congelado cae por debajo del 2% → liquidar
 
 # Umbrales de régimen de volatilidad
-VOL_CAUTION_THR = 0.20   # sigma > 20% → régimen caution, cap 70% en riesgo
-VOL_CRISIS_THR  = 0.30   # sigma > 30% → régimen crisis, cap 40% en riesgo
+try:
+    import config as _cfg
+except ImportError:
+    _cfg = None
 
 
 # ============================================================
@@ -37,21 +39,19 @@ VOL_CRISIS_THR  = 0.30   # sigma > 30% → régimen crisis, cap 40% en riesgo
 
 def detect_regime(sigma_mercado):
     """
-    Determina el régimen de volatilidad del mercado y el cap máximo en riesgo.
+    Filosofia contrarian: SIEMPRE 100% invertido.
 
-    Args:
-        sigma_mercado: float, volatilidad media anualizada del universo de ETFs
-                       (calculada por P4 como media de las volatilidades individuales)
-
-    Returns:
-        tuple (regime, max_risk_weight)
-          regime: 'normal', 'caution' o 'crisis'
-          max_risk_weight: peso máximo total en ETFs de riesgo (el resto va a XEON.DE)
+    El régimen se detecta solo para logging y para que main.py ajuste
+    VIEW_SCALE y DN_BAND. Merton NO reduce riesgo en crisis.
+    "En caídas de mercado es cuando más hay que estar dentro."
     """
-    if sigma_mercado > VOL_CRISIS_THR:
-        return 'crisis', 0.40
-    elif sigma_mercado > VOL_CAUTION_THR:
-        return 'caution', 0.70
+    caution_thr = getattr(_cfg, 'VOL_CAUTION_THR', 0.28) if _cfg else 0.28
+    crisis_thr = getattr(_cfg, 'VOL_CRISIS_THR', 0.40) if _cfg else 0.40
+
+    if sigma_mercado > crisis_thr:
+        return 'crisis', 1.00
+    elif sigma_mercado > caution_thr:
+        return 'caution', 1.00
     else:
         return 'normal', 1.00
 
@@ -171,7 +171,7 @@ def apply_constraints(w_raw, risk_tickers, categoria_por_ticker=None,
             break
         w = np.minimum(w, max_weight)
 
-    # 4. Restricción sectorial (si se proporcionan categorías)
+    # 4. Restricción sectorial (con overrides por categoria)
     if categoria_por_ticker and len(categoria_por_ticker) > 0:
         from collections import defaultdict
         categoria_idx = defaultdict(list)
@@ -179,12 +179,17 @@ def apply_constraints(w_raw, risk_tickers, categoria_por_ticker=None,
             cat = categoria_por_ticker.get(ticker, f'unknown_{ticker}')
             categoria_idx[cat].append(i)
 
+        sector_overrides = {}
+        if _cfg:
+            sector_overrides = getattr(_cfg, 'MAX_SECTOR_OVERRIDE', {})
+
         for _ in range(10):
             changed = False
             for cat, indices in categoria_idx.items():
+                cat_max = sector_overrides.get(cat, max_sector)
                 sector_total = w[indices].sum()
-                if sector_total > max_sector + 1e-6:
-                    scale = max_sector / sector_total
+                if sector_total > cat_max + 1e-6:
+                    scale = cat_max / sector_total
                     for i in indices:
                         w[i] *= scale
                     changed = True
@@ -257,6 +262,15 @@ def run_merton_v0(bl_result, risk_free_rate,
 
     Esta es la función que P4 llama desde el motor (y P3 desde la estrategia).
 
+    Nota sobre "congelados" y liquidar (no usado en el backtest actual):
+      - Idea: si un ETF salio del top de Merton pero sigue en cartera, se podria
+        "congelar" para no pagar comisiones al vender enseguida.
+      - frozen_tickers: lista de tickers en ese estado.
+      - current_weights: pesos completos de la cartera (para ver si un congelado
+        cae por debajo de FREEZE_EXIT_THR → conviene liquidar).
+      - El motor de backtest no pasa frozen_tickers ni current_weights a Merton,
+        asi que liquidar suele ser [].
+
     Args:
         bl_result:            dict de run_black_litterman() — de P1
         risk_free_rate:       float — tasa BCE
@@ -292,12 +306,19 @@ def run_merton_v0(bl_result, risk_free_rate,
         xeon_ticker=xeon_ticker, gamma=gamma
     )
 
-    # --- Aplicar restricciones ---
+    # --- Aplicar restricciones (lee config en runtime para optimizacion) ---
+    n_top = getattr(_cfg, 'MERTON_N_TOP', N_TOP_ASSETS) if _cfg else N_TOP_ASSETS
+    max_sector = getattr(_cfg, 'MERTON_MAX_SECTOR', MAX_SECTOR_WEIGHT) if _cfg else MAX_SECTOR_WEIGHT
+    max_w = getattr(_cfg, 'MERTON_MAX_WEIGHT', MAX_WEIGHT) if _cfg else MAX_WEIGHT
+
     w_risk_final = apply_constraints(
         w_raw_risk,
         risk_tickers,
         categoria_por_ticker=categoria_por_ticker,
         max_risk_total=max_risk_total,
+        n_top=n_top,
+        max_sector=max_sector,
+        max_weight=max_w,
     )
 
     # --- Construir array completo (N elementos, XEON.DE = 0 aquí) ---

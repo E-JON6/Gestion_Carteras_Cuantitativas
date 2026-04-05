@@ -1,17 +1,19 @@
 """
-Main del backtest version 0.
-Recibe: fechas y metrica.
-Devuelve: un resumen guardado en results.
+Entry point para ejecutar el backtest completo con graficos.
+
+Uso:
+    python main_backtest.py
 """
 
-from backtest.engine import run_backtest_v0
+from backtest.engine import run_backtest
+from Visualization.plots import generate_all_plots
 
 
 if __name__ == "__main__":
-    result = run_backtest_v0(
-        start_date="2024-01-01",
-        end_date="2024-06-30",
-        metric_name="omega",
+    result = run_backtest(
+        start_date="2020-01-01",
+        end_date="2026-04-01",
     )
-    print("Backtest guardado en:", result["output_path"])
-    print(result["backtest"])
+    generate_all_plots(output_dir=result["output_dir"])
+    print("\nBacktest completado.")
+    print(f"Resultados en: {result['output_dir']}")

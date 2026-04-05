@@ -1,17 +1,17 @@
 """
-Main del walkforward version 0.
-Recibe: fechas y metrica.
-Devuelve: un resumen guardado en results.
+Entry point para ejecutar el walkforward completo.
+
+Uso:
+    python main_walkforward.py
 """
 
-from walkforward.walkforward import run_walkforward_v0
+from walkforward.walkforward import run_walkforward
 
 
 if __name__ == "__main__":
-    result = run_walkforward_v0(
-        start_date="2024-01-01",
-        end_date="2024-12-31",
-        metric_name="omega",
+    result = run_walkforward(
+        start_date="2020-01-01",
+        end_date="2025-12-31",
     )
-    print("Walkforward guardado en:", result["output_path"])
-    print(result["walkforward"])
+    print("\nWalkforward completado.")
+    print(f"Resultados en: {result['output_dir']}")
