@@ -1,0 +1,84 @@
+
+IWDA.L:
+  sector: global_equity
+  cost: 0.000191639
+
+IEMA.L:
+  sector: emerging_markets
+  cost: 0.000491071
+
+IUSN.DE:
+  sector: small_cap
+  cost: 0.000605406
+
+XLK:
+  sector: technology
+  cost: 0.000157183
+
+XLF:
+  sector: financials
+  cost: 0.000192052
+
+XLV:
+  sector: healthcare
+  cost: 0.000163843
+
+XLE:
+  sector: energy
+  cost: 0.000204276
+
+XLP:
+  sector: consumer_staples
+  cost: 0.000170487
+
+XLI:
+  sector: industrials
+  cost: 0.000159671
+
+XLU:
+  sector: utilities
+  cost: 0.000216573
+
+SOXX:
+  sector: semiconductors
+  cost: 0.000182063
+
+CIBR:
+  sector: cybersecurity
+  cost: 0.000588816
+
+BOTZ:
+  sector: robotics_ai
+  cost: 0.000276225
+
+LIT:
+  sector: lithium_batteries
+  cost: 0.000599127
+
+ITB:
+  sector: homebuilders
+  cost: 0.000263298
+
+SLV:
+  sector: commodities
+  cost: 0.000185657
+
+DBA:
+  sector: agriculture
+  cost: 0.000303805
+
+IEF:
+  sector: bonds
+  cost: 0.000152049
+
+GLD:
+  sector: commodities
+  cost: 0.000177631
+
+TLT:
+  sector: bonds
+  cost: 0.000157083
+
+XEON.DE:
+  sector: money_market
+  cost: 0.0
