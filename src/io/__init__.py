@@ -3,6 +3,7 @@ from .provider import DataProvider, DataProviderError, YFinanceProvider, CSVProv
 from .excel_exporter import OperativaExporter
 from .portfolio_state import PortfolioStateManager
 from .vl_tracker import VLTracker
+from .report_generator import ReportGenerator
 
 __all__ = [
     "IO",
@@ -13,4 +14,5 @@ __all__ = [
     "OperativaExporter",
     "PortfolioStateManager",
     "VLTracker",
+    "ReportGenerator",
 ]

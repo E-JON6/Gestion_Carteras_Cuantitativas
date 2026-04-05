@@ -8,21 +8,42 @@ Usage:
 
 import argparse
 import sys
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
 
-from src.io import IO, YFinanceProvider
-from src.io.vl_tracker import VLTracker
+_MADRID_TZ = ZoneInfo("Europe/Madrid")
+
+from src.io import IO, YFinanceProvider, ReportGenerator
 from src.simulation import DailyRunner
 
 
 def build_strategy(name: str, universe, defensive_ticker: str = "XEON.DE"):
     """Build a strategy by name."""
-    if name == "merton_full":
+    if name == "merton_mom":
+        from src.strategy.merton_mom import MertonMomentumStrategy
+        from src.models.estimators.mu import JamesSteinMean
+        from src.models.estimators.covariance import LedoitWolfCovariance
+        return MertonMomentumStrategy(
+            universe=universe,
+            defensive_ticker=defensive_ticker,
+            gamma=0.3,
+            mu_estimator=JamesSteinMean(),
+            cov_estimator=LedoitWolfCovariance(),
+            momentum_lookback=252,
+            momentum_skip=21,
+            momentum_alpha_min=0.3,
+            use_dn_bands=True,
+            band_scale=2.0,
+            max_risky_fraction=1.0,
+            rebalance_every=21,
+        )
+    elif name == "merton_full":
         from src.strategy.merton_full import MertonFullStrategy
         from src.models.estimators.mu import JamesSteinMean
         from src.models.estimators.covariance import LedoitWolfCovariance
@@ -65,8 +86,12 @@ def main():
     strategy = build_strategy(args.strategy, universe, args.defensive)
     print(f"Strategy: {strategy.name}")
 
-    # Parse date
-    date = pd.Timestamp(args.date) if args.date else None
+    # Parse date — default: today in Madrid time
+    if args.date:
+        date = pd.Timestamp(args.date)
+    else:
+        date = pd.Timestamp(datetime.now(_MADRID_TZ).strftime("%Y-%m-%d"))
+        print(f"No --date provided. Using Madrid date: {date.strftime('%Y-%m-%d')}")
 
     # Build runner
     runner = DailyRunner(
@@ -117,6 +142,22 @@ def main():
         for k, v in metrics.items():
             if isinstance(v, float):
                 print(f"  {k:25s}  {v:>10.4f}")
+
+    # Generate HTML dashboard + seguimiento Excel
+    print("\nGenerating report...")
+    reporter = ReportGenerator(
+        report_dir=f"{args.output_dir}/reports",
+        initial_cash=args.cash,
+    )
+    report_path = reporter.generate(
+        result=result,
+        vl_tracker=runner.vl_tracker,
+        state_mgr=runner.state_manager,
+        universe=universe,
+    )
+    print(f"Report:          {report_path}")
+    print(f"Seguimiento:     {args.output_dir}/reports/seguimiento.xlsx")
+    print(f"Latest:          {args.output_dir}/reports/latest.html")
 
     print("\nDone.")
 

@@ -9,6 +9,7 @@ from src.models.leverage_guard import LeverageGuard
 from src.strategy.signaler import MertonSignaler, MomentumSignaler
 from src.strategy.filter.no_trade_band import NoTradeBandFilter
 from src.strategy.filter.cost_aware import CostAwareFilter
+from src.strategy.filter.min_weight import MinWeightFilter
 from src.strategy.transformers import fill_defensive
 
 from .base import Strategy
@@ -23,8 +24,9 @@ class MertonMomentumStrategy(Strategy):
       2. MomentumSignaler     → reduce weight for negative momentum tickers
       3. NoTradeBandFilter    → skip tickers inside DN band
       4. fill_defensive       → defensive absorbs remainder
-      5. CostAwareFilter      → ensure executable
-      6. LeverageGuard        → force rebalance if leverage drifts
+      5. MinWeightFilter      → drop positions < 1% (project compliance)
+      6. CostAwareFilter      → ensure executable
+      7. LeverageGuard        → force rebalance if leverage drifts
     """
 
     defensive_ticker: str
@@ -82,8 +84,9 @@ class MertonMomentumStrategy(Strategy):
         self._step_count += 1
         is_rebalance_day = self._step_count % self.rebalance_every == 0
         leverage_exceeded = self._leverage_guard.is_triggered(portfolio, prices)
+        portfolio_uninvested = not any(v != 0 for v in portfolio.positions.values())
 
-        if not is_rebalance_day and not leverage_exceeded:
+        if not is_rebalance_day and not leverage_exceeded and not portfolio_uninvested:
             return []
 
         # 1. Merton optimal weights
@@ -110,7 +113,10 @@ class MertonMomentumStrategy(Strategy):
             signals, self._risky_tickers, self.defensive_ticker, prices, portfolio,
         )
 
-        # 5. Cost-aware filter
+        # 5. Min-weight compliance (no position < 1%)
+        signals = MinWeightFilter(min_weight=0.01).filter(signals)
+
+        # 6. Cost-aware filter
         signals = CostAwareFilter(
             transaction_costs=self.universe.transaction_costs,
         ).filter(signals, portfolio, prices)

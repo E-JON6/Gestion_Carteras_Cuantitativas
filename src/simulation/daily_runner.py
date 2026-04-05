@@ -1,7 +1,10 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pandas as pd
+
+_MADRID_TZ = ZoneInfo("Europe/Madrid")
 
 from src.domain.asset import Universe, PriceHistory, PriceSnapshot
 from src.domain.portfolio import Portfolio
@@ -64,18 +67,20 @@ class DailyRunner:
     def run_today(self, date: pd.Timestamp | None = None) -> dict:
         """Execute the full daily pipeline. Returns a summary dict."""
         if date is None:
-            date = pd.Timestamp(datetime.now().strftime("%Y-%m-%d"))
+            # Use Madrid timezone so the date is always correct regardless of server location
+            date = pd.Timestamp(datetime.now(_MADRID_TZ).strftime("%Y-%m-%d"))
 
         # 1. Load state or start fresh
         saved_date = self._state_mgr.load_into_portfolio(self._portfolio)
         is_first_day = saved_date is None
 
         # 2. Download price history (warmup + today)
+        # yfinance `end` is EXCLUSIVE — add one day to include `date` itself
         history_start = date - pd.tseries.offsets.BDay(self.warmup_days + 10)
         prices_df = self.provider.get_prices(
             self.universe.tickers,
             start=history_start,
-            end=date,
+            end=date + pd.Timedelta(days=1),
         )
         history = PriceHistory(self.universe, prices_df, fill_na=True)
 
@@ -106,8 +111,8 @@ class DailyRunner:
         # 6. Export operativa Excel
         excel_path = self._exporter.export(trades, date)
 
-        # 7. Save portfolio state
-        self._state_mgr.save(self._portfolio, today_prices, date)
+        # 7. Save portfolio state (including today's trades for ops history)
+        self._state_mgr.save(self._portfolio, today_prices, date, trades=trades)
 
         # 8. Record post-trade VL
         post_trade_vl = self._portfolio.total_value(today_prices)
@@ -122,6 +127,8 @@ class DailyRunner:
             "n_orders": len(orders),
             "cash": self._portfolio.cash,
             "positions": self._portfolio.positions,
+            "today_prices": today_prices,
+            "trades": trades,
             "excel_path": str(excel_path) if excel_path else None,
             "is_first_day": is_first_day,
         }
