@@ -128,6 +128,7 @@ class DailyRunner:
             "cash": self._portfolio.cash,
             "positions": self._portfolio.positions,
             "today_prices": today_prices,
+            "history_df": history.df.iloc[-504:].copy(),   # last 2y for price charts
             "trades": trades,
             "excel_path": str(excel_path) if excel_path else None,
             "is_first_day": is_first_day,

@@ -154,6 +154,7 @@ def main():
         vl_tracker=runner.vl_tracker,
         state_mgr=runner.state_manager,
         universe=universe,
+        strategy=strategy,
     )
     print(f"Report:          {report_path}")
     print(f"Seguimiento:     {args.output_dir}/reports/seguimiento.xlsx")
