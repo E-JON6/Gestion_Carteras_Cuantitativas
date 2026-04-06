@@ -4,6 +4,7 @@ from .excel_exporter import OperativaExporter
 from .portfolio_state import PortfolioStateManager
 from .vl_tracker import VLTracker
 from .report_generator import ReportGenerator
+from .email_sender import EmailSender
 
 __all__ = [
     "IO",
@@ -15,4 +16,5 @@ __all__ = [
     "PortfolioStateManager",
     "VLTracker",
     "ReportGenerator",
+    "EmailSender",
 ]

@@ -769,41 +769,113 @@ def _tbl_positions(positions_df: pd.DataFrame) -> str:
     return _table(["Ticker", "Acciones", "Precio", "Valor", "Peso s/NAV"], rows)
 
 
+def _strategy_pill(strategy: str) -> str:
+    """Small pill badge for strategy name."""
+    colors = {
+        "E4":         (AMBER,  "#451a03"),
+        "transicion": (PURPLE, "#2e1065"),
+        "merton_mom": (CYAN,   "#083344"),
+    }
+    fg, bg = colors.get(strategy, (MUTED, CARD2))
+    label = {"E4": "E4 · IUSE.L", "transicion": "Transición", "merton_mom": "merton_mom"}.get(strategy, strategy)
+    return (
+        f'<span style="display:inline-block;padding:1px 7px;border-radius:9px;'
+        f'font-size:10px;font-weight:600;letter-spacing:.03em;'
+        f'background:{bg};color:{fg};white-space:nowrap">{label}</span>'
+    )
+
+
 def _tbl_trades_today(ops_df: pd.DataFrame, date: pd.Timestamp) -> str:
     today = (ops_df[ops_df["date"].dt.date == date.date()]
              if not ops_df.empty else pd.DataFrame())
     if today.empty:
         return _empty("Sin operaciones ejecutadas hoy.")
+
+    has_strategy = "strategy" in today.columns
     rows = ""
-    for _, r in today.iterrows():
-        dir_lbl = "COMPRA" if r["direction"] == "buy" else "VENTA"
-        dir_col = GREEN if r["direction"] == "buy" else RED
-        rows += (
-            f"<tr>"
-            f"<td style='{_L};{_MONO};font-weight:700'>{r['ticker']}</td>"
-            f"<td style='{_L};font-weight:700;color:{dir_col}'>{dir_lbl}</td>"
-            f"<td style='{_R};{_MONO}'>{abs(r['shares']):,.2f}</td>"
-            f"<td style='{_R};{_MONO}'>€{r['price']:,.3f}</td>"
-            f"<td style='{_R};{_MONO}'>€{abs(r['value']):,.0f}</td>"
-            f"<td style='{_R};{_MONO}'>€{r['cost']:,.2f}</td>"
-            f"</tr>"
-        )
+
+    # Group: transition trades first, then strategy trades
+    if has_strategy:
+        transition = today[today["strategy"].isin(["transicion", "E4"])]
+        new_trades = today[~today["strategy"].isin(["transicion", "E4"])]
+        sections = []
+        if not transition.empty:
+            sections.append(("Liquidación estrategia anterior", transition))
+        if not new_trades.empty:
+            sections.append(("Nuevas posiciones", new_trades))
+    else:
+        sections = [("", today)]
+
+    for label, sub_df in sections:
+        if label:
+            rows += (
+                f"<tr><td colspan='7' style='padding:10px 0 4px;color:{MUTED};"
+                f"font-size:11px;font-weight:600;text-transform:uppercase;"
+                f"letter-spacing:.05em;border:none'>{label}</td></tr>"
+            )
+        for _, r in sub_df.iterrows():
+            dir_lbl = "COMPRA" if r["direction"] == "buy" else "VENTA"
+            dir_col = GREEN if r["direction"] == "buy" else RED
+            strat = _strategy_pill(r["strategy"]) if has_strategy else ""
+            rows += (
+                f"<tr>"
+                f"<td style='{_L};{_MONO};font-weight:700'>{r['ticker']}</td>"
+                f"<td style='{_L};font-weight:700;color:{dir_col}'>{dir_lbl}</td>"
+                f"<td style='{_R};{_MONO}'>{abs(r['shares']):,.2f}</td>"
+                f"<td style='{_R};{_MONO}'>€{r['price']:,.3f}</td>"
+                f"<td style='{_R};{_MONO}'>€{abs(r['value']):,.0f}</td>"
+                f"<td style='{_R};{_MONO}'>€{r['cost']:,.2f}</td>"
+                f"<td style='{_L}'>{strat}</td>"
+                f"</tr>"
+            )
+
     tc = today["cost"].sum()
     rows += (
         f"<tr style='border-top:1px solid {BORDER}'>"
         f"<td colspan='5' style='color:{MUTED};font-size:11px'>Total costes del día</td>"
-        f"<td style='{_R};{_MONO};font-weight:700'>€{tc:,.2f}</td></tr>"
+        f"<td style='{_R};{_MONO};font-weight:700'>€{tc:,.2f}</td>"
+        f"<td></td></tr>"
     )
-    return _table(["Ticker", "Dir.", "Acciones", "Precio", "Valor Noc.", "Coste CT"], rows)
+    return _table(["Ticker", "Dir.", "Acciones", "Precio", "Valor Noc.", "Coste CT", ""], rows)
 
 
 def _tbl_ops_history(ops_df: pd.DataFrame) -> str:
     if ops_df.empty:
         return _empty("Sin historial de operaciones.")
+
+    has_strategy = "strategy" in ops_df.columns
+    sorted_df = ops_df.sort_values("date", ascending=False)
+
+    # Group by strategy for clear visual separation
     rows = ""
-    for _, r in ops_df.sort_values("date", ascending=False).iterrows():
+    current_strat = None
+    for _, r in sorted_df.iterrows():
+        strat = r.get("strategy", "—") if has_strategy else "—"
+
+        # Section header when strategy changes (chronologically descending)
+        if has_strategy and strat != current_strat:
+            current_strat = strat
+            strat_label = {
+                "merton_mom": "Merton Momentum (multi-asset)",
+                "transicion": "Transición de estrategia",
+                "E4":         "Estrategia anterior — E4 (IUSE.L)",
+            }.get(strat, strat)
+            strat_dot = {
+                "merton_mom": CYAN, "transicion": PURPLE, "E4": AMBER,
+            }.get(strat, MUTED)
+            rows += (
+                f"<tr><td colspan='8' style='padding:14px 0 6px;border:none'>"
+                f"<span style='display:inline-block;width:8px;height:8px;"
+                f"border-radius:50%;background:{strat_dot};margin-right:8px;"
+                f"vertical-align:middle'></span>"
+                f"<span style='color:{TEXT};font-size:12px;font-weight:700;"
+                f"letter-spacing:.02em'>{strat_label}</span>"
+                f"</td></tr>"
+            )
+
         dir_col = GREEN if r["direction"] == "buy" else RED
         dir_lbl = "COMPRA" if r["direction"] == "buy" else "VENTA"
+        pill = _strategy_pill(strat) if has_strategy else ""
         rows += (
             f"<tr>"
             f"<td style='{_L};{_MONO}'>{pd.Timestamp(r['date']).strftime('%d/%m/%Y')}</td>"
@@ -813,10 +885,21 @@ def _tbl_ops_history(ops_df: pd.DataFrame) -> str:
             f"<td style='{_R};{_MONO}'>€{r['price']:,.3f}</td>"
             f"<td style='{_R};{_MONO}'>€{abs(r['value']):,.0f}</td>"
             f"<td style='{_R};{_MONO}'>€{r['cost']:,.2f}</td>"
+            f"<td style='{_L}'>{pill}</td>"
             f"</tr>"
         )
+
+    tc = ops_df["cost"].sum()
+    n = len(ops_df)
+    rows += (
+        f"<tr style='border-top:1px solid {BORDER}'>"
+        f"<td colspan='6' style='color:{MUTED};font-size:11px'>"
+        f"Total: {n} operaciones</td>"
+        f"<td style='{_R};{_MONO};font-weight:700'>€{tc:,.2f}</td>"
+        f"<td></td></tr>"
+    )
     return _table(["Fecha", "Ticker", "Dir.", "Acciones", "Precio",
-                   "Valor Noc.", "Coste CT"], rows)
+                   "Valor Noc.", "Coste CT", ""], rows)
 
 
 def _tbl_metrics(metrics: dict) -> str:

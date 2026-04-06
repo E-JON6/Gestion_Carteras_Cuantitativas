@@ -1,0 +1,15 @@
+{
+    "iniciado": true,
+    "fecha_inicio": "2026-03-12",
+    "capital_inicial": 10000000.0,
+    "valor_cartera": 9804265.693956235,
+    "participaciones": 34689.691103700214,
+    "alpha_actual": 0.48,
+    "peak_valor": 10025316.896336144,
+    "en_modo_defensivo": false,
+    "n_operaciones": 5,
+    "costes_acumulados": 3415.6713634278476,
+    "fecha_ultima_ejecucion": "2026-04-02",
+    "precio_rf_ayer": 148.75900268554688,
+    "participaciones_rf": 34271.956518609804
+}

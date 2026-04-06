@@ -15,11 +15,12 @@ from zoneinfo import ZoneInfo
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from dotenv import load_dotenv
 import pandas as pd
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
 
-from src.io import IO, YFinanceProvider, ReportGenerator
+from src.io import IO, YFinanceProvider, ReportGenerator, EmailSender
 from src.simulation import DailyRunner
 
 
@@ -75,7 +76,11 @@ def main():
     parser.add_argument("--defensive", default="XEON.DE", help="Defensive ticker")
     parser.add_argument("--cash", type=float, default=10_000_000, help="Initial cash")
     parser.add_argument("--output-dir", default="outputs", help="Output directory root")
+    parser.add_argument("--no-email", action="store_true", help="Skip sending emails")
     args = parser.parse_args()
+
+    # Load .env for SMTP credentials
+    load_dotenv()
 
     # Load universe
     io = IO()
@@ -122,10 +127,20 @@ def main():
     print(f"Signals:        {result['n_signals']}")
     print(f"Trades:         {result['n_trades']}")
 
+    # Migration info
+    if result.get('migration_trades'):
+        print(f"\n*** MIGRATION from legacy strategy ***")
+        for t in result['migration_trades']:
+            print(f"  SELL {t.ticker}: {abs(t.shares):,.2f} shares @ {t.price:.4f} (cost: {t.cost:.2f})")
+
     if result['excel_path']:
         print(f"\nOperativa Excel: {result['excel_path']}")
     else:
         print("\nNo trades today — no Excel generated.")
+
+    print(f"Historial:      {result.get('historial_path', 'N/A')}")
+    print(f"Costes acum.:   {result.get('costes_acumulados', 0):,.2f} EUR")
+    print(f"N ops acum.:    {result.get('n_operaciones', 0)}")
 
     # Print positions
     positions = result['positions']
@@ -156,9 +171,29 @@ def main():
         universe=universe,
         strategy=strategy,
     )
+    seguimiento_path = Path(f"{args.output_dir}/reports/seguimiento.xlsx")
     print(f"Report:          {report_path}")
-    print(f"Seguimiento:     {args.output_dir}/reports/seguimiento.xlsx")
+    print(f"Seguimiento:     {seguimiento_path}")
     print(f"Latest:          {args.output_dir}/reports/latest.html")
+
+    # Send emails
+    if not args.no_email:
+        print("\nSending emails...")
+        try:
+            sender = EmailSender.from_env()
+            email_results = sender.send_all(
+                result=result,
+                vl_tracker=runner.vl_tracker,
+                state_mgr=runner.state_manager,
+                universe=universe,
+                report_path=Path(report_path),
+                seguimiento_path=seguimiento_path,
+            )
+            for name, ok in email_results.items():
+                status = "sent" if ok else "FAILED"
+                print(f"  Email ({name}): {status}")
+        except Exception as e:
+            print(f"  Email setup failed: {e}")
 
     print("\nDone.")
 
