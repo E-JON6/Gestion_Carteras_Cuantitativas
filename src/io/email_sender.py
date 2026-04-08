@@ -119,6 +119,11 @@ class EmailSender:
         )
         return self._try_send(msg, label="summary")
 
+    @property
+    def is_test_mode(self) -> bool:
+        """True when afi and summary go to the same address (test/dev)."""
+        return self.afi_recipient.strip().lower() == self.summary_recipient.strip().lower()
+
     def send_all(
         self,
         result: dict,
@@ -129,11 +134,17 @@ class EmailSender:
         seguimiento_path: Path | None = None,
     ) -> dict[str, bool]:
         """Send both emails. Each is independent — one can fail without
-        affecting the other."""
+        affecting the other.
+
+        When ``is_test_mode`` (afi == summary recipient), the operativa
+        mail to Afi is skipped and only the summary is sent.
+        """
         results: dict[str, bool] = {}
 
         # Email 1: Operativa to Afi (only if trades)
-        if result.get("excel_path"):
+        if self.is_test_mode:
+            results["operativa"] = True  # skipped — test mode
+        elif result.get("excel_path"):
             results["operativa"] = self.send_operativa(
                 date=result["date"],
                 excel_path=result["excel_path"],
