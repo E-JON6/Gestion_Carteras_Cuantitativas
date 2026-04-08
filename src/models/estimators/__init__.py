@@ -12,10 +12,12 @@ from .sigma import (
 from .covariance import (
     CovEstimator,
     SampleCovariance, LedoitWolfCovariance, ConstantCorrelationCovariance,
+    BlendedEwmaCovariance,
     RollingCovariance,
 )
 from .r import (
     RiskFreeRateEstimator, DefensiveRfrEstimator, FixedRiskFreeRate,
+    FileRfrEstimator,
 )
 
 __all__ = [
@@ -36,6 +38,7 @@ __all__ = [
     "SampleCovariance",
     "LedoitWolfCovariance",
     "ConstantCorrelationCovariance",
+    "BlendedEwmaCovariance",
     "RollingCovariance",
 
     "BLOmegaMu",
@@ -43,5 +46,6 @@ __all__ = [
     "RiskFreeRateEstimator",
     "DefensiveRfrEstimator",
     "FixedRiskFreeRate",
+    "FileRfrEstimator",
 
 ]

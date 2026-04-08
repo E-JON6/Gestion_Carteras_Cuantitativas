@@ -772,12 +772,20 @@ def _tbl_positions(positions_df: pd.DataFrame) -> str:
 def _strategy_pill(strategy: str) -> str:
     """Small pill badge for strategy name."""
     colors = {
-        "E4":         (AMBER,  "#451a03"),
-        "transicion": (PURPLE, "#2e1065"),
-        "merton_mom": (CYAN,   "#083344"),
+        "E4":              (AMBER,  "#451a03"),
+        "transicion":      (PURPLE, "#2e1065"),
+        "merton_mom":      (CYAN,   "#083344"),
+        "merton_custom":   (CYAN,   "#083344"),
+        "merton_full":     (BLUE,   "#1e3a5f"),
+        "merton":          (TEAL,   "#134e4a"),
+        "merton_dual_mom": (GREEN,  "#14532d"),
+        "buy_and_hold":    (MUTED,  CARD2),
     }
     fg, bg = colors.get(strategy, (MUTED, CARD2))
-    label = {"E4": "E4 · IUSE.L", "transicion": "Transición", "merton_mom": "merton_mom"}.get(strategy, strategy)
+    label = {
+        "E4": "E4 · IUSE.L",
+        "transicion": "Transición",
+    }.get(strategy, strategy)
     return (
         f'<span style="display:inline-block;padding:1px 7px;border-radius:9px;'
         f'font-size:10px;font-weight:600;letter-spacing:.03em;'
@@ -856,12 +864,20 @@ def _tbl_ops_history(ops_df: pd.DataFrame) -> str:
         if has_strategy and strat != current_strat:
             current_strat = strat
             strat_label = {
-                "merton_mom": "Merton Momentum (multi-asset)",
-                "transicion": "Transición de estrategia",
-                "E4":         "Estrategia anterior — E4 (IUSE.L)",
+                "merton_mom":      "Merton Momentum (multi-asset)",
+                "merton_custom":   "Merton Custom (top-N + momentum)",
+                "merton_full":     "Merton Full (vol regime + frozen)",
+                "merton":          "Merton (base)",
+                "merton_dual_mom": "Merton Dual Momentum",
+                "buy_and_hold":    "Buy & Hold",
+                "transicion":      "Transición de estrategia",
+                "E4":              "Estrategia anterior — E4 (IUSE.L)",
             }.get(strat, strat)
             strat_dot = {
-                "merton_mom": CYAN, "transicion": PURPLE, "E4": AMBER,
+                "merton_mom": CYAN, "merton_custom": CYAN,
+                "merton_full": BLUE, "merton": TEAL,
+                "merton_dual_mom": GREEN, "buy_and_hold": MUTED,
+                "transicion": PURPLE, "E4": AMBER,
             }.get(strat, MUTED)
             rows += (
                 f"<tr><td colspan='8' style='padding:14px 0 6px;border:none'>"

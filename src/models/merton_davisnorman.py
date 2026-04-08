@@ -16,8 +16,8 @@ class MertonDavisNormanModel:
     r: float
 
     def __post_init__(self):
-        if self.gamma <= 0 or self.gamma >= 1:
-            raise ValueError(f"gamma must be in (0, 1), got {self.gamma}")
+        if self.gamma == 1:
+            raise ValueError("gamma cannot equal 1 (1 - gamma is the divisor in Merton's formula)")
 
     def optimal_weights(
         self,

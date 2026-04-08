@@ -46,13 +46,10 @@ class Broker:
     ) -> list[Order]:
         """Convert every signal into a PendingOrder or InvalidOrder."""
         current_weights = portfolio.positions_weights(prices)
-        current_positions = portfolio.positions
         effective_value = self._effective_value(portfolio, signals, prices)
 
         return [
-            self._signal_to_order(
-                s, current_weights, current_positions, effective_value, prices,
-            )
+            self._signal_to_order(s, current_weights, effective_value, prices)
             for s in signals
         ]
 
@@ -60,7 +57,6 @@ class Broker:
         self,
         signal: Signal,
         current_weights: dict[str, float],
-        current_positions: dict[str, float],
         effective_value: float,
         prices: PriceSnapshot,
     ) -> Order:
@@ -73,11 +69,6 @@ class Broker:
             price = prices.get_price(signal.ticker)
         except Exception:
             return signal.invalidate(f"unknown ticker: {signal.ticker}")
-
-        # Full liquidation: sell exact shares held (no rounding loss)
-        if signal.target_weight == 0.0 and signal.ticker in current_positions:
-            shares = -current_positions[signal.ticker]
-            return signal.order(shares, price)
 
         shares = self._target_shares(signal.target_weight, current_w,
                                      effective_value, price)
@@ -97,8 +88,7 @@ class Broker:
         delta_value = (target_w - current_w) * effective_value
         if delta_value > 0:
             delta_value *= (1 - self.buy_adjustment)
-        shares = delta_value / price
-        return float(int(shares))  # truncate toward zero: whole shares only
+        return delta_value / price
 
     def _effective_value(
         self,

@@ -1,8 +1,8 @@
 from .io import IO
 from .provider import DataProvider, DataProviderError, YFinanceProvider, CSVProvider
-from .excel_exporter import OperativaExporter
 from .portfolio_state import PortfolioStateManager
 from .vl_tracker import VLTracker
+from .excel_exporter import OperativaExporter
 from .report_generator import ReportGenerator
 from .email_sender import EmailSender
 
@@ -12,9 +12,9 @@ __all__ = [
     "DataProviderError",
     "YFinanceProvider",
     "CSVProvider",
-    "OperativaExporter",
     "PortfolioStateManager",
     "VLTracker",
+    "OperativaExporter",
     "ReportGenerator",
     "EmailSender",
 ]

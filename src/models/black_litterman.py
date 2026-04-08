@@ -23,12 +23,13 @@ class BlackLittermanModel:
         self,
         cov: pd.DataFrame,
         market_weights: dict[str, float],
+        rf: float = 0.0,
     ) -> dict[str, float]:
-        """Equilibrium implied returns: Pi = risk_aversion * Sigma * w_market."""
+        """Equilibrium implied returns: Pi = rf + risk_aversion * Sigma * w_market."""
         tickers = list(cov.columns)
         cov_arr = cov.values
         w_arr = np.array([market_weights[t] for t in tickers])
-        pi = self.risk_aversion * cov_arr @ w_arr
+        pi = rf + self.risk_aversion * cov_arr @ w_arr
         return dict(zip(tickers, pi))
 
     def posterior_returns(
@@ -38,6 +39,7 @@ class BlackLittermanModel:
         P: np.ndarray,
         Q: np.ndarray,
         omega: np.ndarray | None = None,
+        rf: float = 0.0,
     ) -> dict[str, float]:
         """Black-Litterman posterior expected returns.
 
@@ -47,10 +49,12 @@ class BlackLittermanModel:
             P: Pick matrix (K, N).
             Q: View returns vector (K,).
             omega: View uncertainty (K, K). Defaults to tau * P @ Sigma @ P.T.
+            rf: Risk-free rate added to the equilibrium prior.
         """
         tickers = list(cov.columns)
         cov_arr = cov.values
-        pi = np.array([self.implied_returns(cov, market_weights)[t] for t in tickers])
+        pi_dict = self.implied_returns(cov, market_weights, rf=rf)
+        pi = np.array([pi_dict[t] for t in tickers])
         tau_cov = self.tau * cov_arr
 
         if omega is None:

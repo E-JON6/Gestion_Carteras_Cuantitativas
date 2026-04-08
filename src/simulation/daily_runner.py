@@ -6,6 +6,9 @@ import pandas as pd
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
 
+# IUSE.L transaction cost (from Historial, not in current universe)
+_IUSE_CT = 0.00021
+
 from src.domain.asset import Universe, PriceHistory, PriceSnapshot
 from src.domain.portfolio import Portfolio
 from src.domain.trade import Broker, Signal, Trade
@@ -17,16 +20,12 @@ from src.io.vl_tracker import VLTracker
 from src.strategy.base import Strategy
 
 
-# IUSE.L transaction cost (from Historial, not in jaime universe)
-_IUSE_CT = 0.00021
-
-
 @dataclass
 class DailyRunner:
     """Orchestrates daily live trading simulation.
 
     Flow per day:
-        1. Load portfolio state (or migrate from estado.json if day 1)
+        1. Load portfolio state (or migrate from legacy estado.json if day 1)
         2. Download today's close prices
         3. Mark-to-market: record VL BEFORE trading
         4. Execute strategy -> signals -> broker -> trades
@@ -149,8 +148,7 @@ class DailyRunner:
         # 10. Compute post-trade VL
         post_trade_vl = self._portfolio.total_value(today_prices)
 
-        # 10b. On migration: seed legacy VL + operations BEFORE today's VL
-        #      so today's record overwrites the legacy value for the same date
+        # 10b. On migration: seed legacy VL from Historial BEFORE today's VL
         if is_first_day and migration_trades:
             vl_entries, legacy_ops = self._state_mgr.load_legacy_from_historial(
                 group_name=self.group_name,
@@ -199,6 +197,7 @@ class DailyRunner:
             cash=self._portfolio.cash,
             decision=decision,
             group_name=self.group_name,
+            strategy_name=self.strategy.name,
         )
 
         return {
@@ -221,23 +220,42 @@ class DailyRunner:
             "n_operaciones": self._n_operaciones,
         }
 
-    # ── Migration from legacy estado.json ──────────────────────────
+    # ── Migration from legacy estado.json (E4 strategy) ───────────
 
     def _migrate_from_estado(
         self, date: pd.Timestamp,
     ) -> tuple[list[Trade], dict[str, float] | None]:
-        """Bootstrap portfolio from estado.json (previous strategy).
+        """Bootstrap portfolio from legacy estado.json (E4 strategy).
 
-        Liquidates IUSE.L (not in universe), keeps XEON.DE.
+        The old format uses:
+          - 'participaciones': shares of IUSE.L
+          - 'participaciones_rf': shares of XEON.DE
+
+        This method liquidates both positions and converts to pure cash
+        so the new strategy can allocate from scratch.
+
         Returns (migration_trades, extra_costs_for_operativa).
         """
         estado = self._state_mgr.load_estado()
-        if not estado or "participaciones" not in estado:
-            # No legacy state — start fresh
+        if not estado:
+            # No legacy state — true first day, start with initial_cash
             self._costes_acumulados = 0.0
             self._n_operaciones = 0
             return [], None
 
+        # Detect legacy format (has 'participaciones' key)
+        is_legacy = "participaciones" in estado
+        if not is_legacy:
+            # New format estado.json — load counters and start fresh
+            self._costes_acumulados = estado.get("costes_acumulados", 0.0)
+            self._n_operaciones = estado.get("n_operaciones", 0)
+            # Set portfolio to the VL as pure cash
+            vl = estado.get("valor_cartera", self.initial_cash)
+            self._portfolio._cash = vl
+            self._portfolio._positions = {}
+            return [], None
+
+        # Legacy E4 format: liquidate IUSE.L + XEON.DE
         iuse_shares = estado.get("participaciones", 0.0)
         xeon_shares = estado.get("participaciones_rf", 0.0)
         prev_costes = estado.get("costes_acumulados", 0.0)
@@ -247,7 +265,7 @@ class DailyRunner:
         migration_cost = 0.0
         total_cash = 0.0
 
-        # Sell IUSE.L (not in universe)
+        # Sell IUSE.L (not in universe — fetch price separately)
         if iuse_shares > 0:
             iuse_price = self._fetch_single_price("IUSE.L", date)
             cost = iuse_shares * iuse_price * _IUSE_CT
@@ -260,8 +278,7 @@ class DailyRunner:
             migration_cost += cost
             total_cash += iuse_shares * iuse_price - cost
 
-        # Sell XEON.DE too (CT=0) so portfolio starts empty and strategy
-        # will rebalance on the first step (portfolio_uninvested=True)
+        # Sell XEON.DE (CT=0) so portfolio starts empty
         if xeon_shares > 0:
             xeon_price = self._fetch_single_price("XEON.DE", date)
             signal = Signal(
@@ -287,7 +304,6 @@ class DailyRunner:
         start = date - pd.Timedelta(days=10)
         end = date + pd.Timedelta(days=1)
         prices_df = self.provider.get_prices([ticker], start=start, end=end)
-        # Use the last available price up to date
         prices_df = prices_df.loc[prices_df.index <= date]
         if prices_df.empty:
             raise ValueError(f"No price data for {ticker} up to {date}")

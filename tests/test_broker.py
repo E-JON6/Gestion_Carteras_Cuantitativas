@@ -130,14 +130,13 @@ class TestOrderValidation:
         signals2 = [make_signal("AAPL", 0.99)]
         orders2, _ = broker_2.execute(portfolio2, signals2, prices_2)
 
-        # Construct a case where combined buys exceed cash even with whole shares.
-        # AAPL@100, MSFT@200. With $1000 and 0.70 + 0.70 = 140% target,
-        # AAPL 0.70 => ~6 shares = $600+tx, MSFT 0.70 => ~3 shares = $600+tx
-        # Total ~$1200 > $1000
+        # $10 portfolio, 99% => ~$9.9 => 0.098 shares at $100 each
+        # abs_value ≈ 9.85 (with adjustment) which is < 10 cash, so accepted
+        # Let me construct a real insufficient case
         portfolio3 = Portfolio(initial_cash=1_000)
         signals3 = [
-            make_signal("AAPL", 0.70),
-            make_signal("MSFT", 0.70),
+            make_signal("AAPL", 0.60),  # ~$600
+            make_signal("MSFT", 0.60),  # ~$600 — combined > cash
         ]
         orders3, _ = broker_2.execute(portfolio3, signals3, prices_2)
 
@@ -504,12 +503,11 @@ class TestEdgeCases:
 
     def test_rebalance_existing_positions(self, broker_2, prices_2):
         # Start with 50/50, rebalance to 70/30
-        # With whole-share rounding, need enough cash buffer for the buy
         portfolio = Portfolio(
-            initial_cash=500,
+            initial_cash=0,
             initial_positions={"AAPL": 500, "MSFT": 250},
         )
-        # AAPL=50_000, MSFT=50_000, cash=500, total=100_500 => ~49.75%/~49.75%
+        # AAPL=50_000, MSFT=50_000, total=100_000 => 50%/50%
         signals = [
             make_signal("AAPL", 0.70),  # buy more
             make_signal("MSFT", 0.30),  # sell some
@@ -521,9 +519,6 @@ class TestEdgeCases:
         buys = [t for t in trades if t.direction == "buy"]
         assert len(sells) == 1 and sells[0].ticker == "MSFT"
         assert len(buys) == 1 and buys[0].ticker == "AAPL"
-        # Shares are whole numbers
-        assert buys[0].shares == int(buys[0].shares)
-        assert sells[0].shares == int(sells[0].shares)
 
     def test_very_small_weight_change_treated_as_unchanged(self, broker_2, prices_2):
         portfolio = Portfolio(initial_cash=50_000, initial_positions={"AAPL": 500})
@@ -650,9 +645,9 @@ class TestTransactionCosts:
         prices = make_prices(universe, {"AAPL": 100.0, "MSFT": 200.0})
         broker = Broker(transaction_costs={"AAPL": 0.001, "MSFT": 0.001})
 
-        # 50/50 => rebalance to 70/30 (cash buffer for whole-share rounding)
-        portfolio = Portfolio(initial_cash=500, initial_positions={"AAPL": 500, "MSFT": 250})
-        initial_value = portfolio.total_value(prices)  # 100_500
+        # 50/50 => rebalance to 70/30
+        portfolio = Portfolio(initial_cash=0, initial_positions={"AAPL": 500, "MSFT": 250})
+        initial_value = portfolio.total_value(prices)  # 100_000
 
         _, trades = broker.execute(portfolio, signals=[
             make_signal("AAPL", 0.70),
@@ -665,6 +660,7 @@ class TestTransactionCosts:
         total_cost = sum(t.cost for t in trades)
         final_value = portfolio.total_value(prices)
         assert final_value < initial_value
+        assert final_value == pytest.approx(initial_value - total_cost, abs=1.0)
 
     def test_high_costs_reject_buy_in_rebalance(self):
         """With high costs, sell proceeds may not cover buy + its costs => buy rejected."""
@@ -825,8 +821,8 @@ class TestWeightConsistency:
         prices = make_prices(universe, {"AAPL": 100.0, "MSFT": 200.0})
         broker = Broker(transaction_costs={"AAPL": 0.001, "MSFT": 0.001}, buy_adjustment=0.005)
 
-        # Start 50/50, rebalance to 70/30 (cash buffer for whole-share rounding)
-        portfolio = Portfolio(initial_cash=500, initial_positions={"AAPL": 500, "MSFT": 250})
+        # Start 50/50, rebalance to 70/30
+        portfolio = Portfolio(initial_cash=0, initial_positions={"AAPL": 500, "MSFT": 250})
         signals = [
             make_signal("AAPL", 0.70),
             make_signal("MSFT", 0.30),
@@ -834,10 +830,9 @@ class TestWeightConsistency:
 
         broker.execute(portfolio, signals, prices)
 
-        # Whole-share rounding introduces larger weight deviation
         weights = portfolio.positions_weights(prices)
-        assert weights["AAPL"] == pytest.approx(0.70, abs=0.03)
-        assert weights["MSFT"] == pytest.approx(0.30, abs=0.03)
+        assert weights["AAPL"] == pytest.approx(0.70, abs=self.WEIGHT_TOL)
+        assert weights["MSFT"] == pytest.approx(0.30, abs=self.WEIGHT_TOL)
 
     def test_weights_with_transaction_costs(self):
         universe = make_universe(("AAPL", 0.01), ("MSFT", 0.01))

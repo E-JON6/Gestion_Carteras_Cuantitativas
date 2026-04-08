@@ -30,7 +30,7 @@ class PortfolioStateManager:
         prices: PriceSnapshot,
         date: pd.Timestamp,
         trades: list[Trade] | None = None,
-        strategy_name: str = "merton_mom",
+        strategy_name: str = "merton_custom",
     ) -> None:
         """Save current portfolio state to disk."""
         Path(self.state_dir).mkdir(parents=True, exist_ok=True)
@@ -155,7 +155,7 @@ class PortfolioStateManager:
     def _load_raw(self) -> dict:
         return json.loads(self._state_path.read_text())
 
-    # ── estado.json (legacy + updated format) ──────────────────────
+    # ── estado.json ───────────────────────────────────────
 
     @property
     def _estado_path(self) -> Path:
@@ -177,9 +177,9 @@ class PortfolioStateManager:
         date: pd.Timestamp,
         costes_acumulados: float,
         n_operaciones: int,
-        strategy_name: str = "merton_mom",
+        strategy_name: str = "merton_custom",
         capital_inicial: float = 10_000_000.0,
-        fecha_inicio: str = "2026-03-12",
+        fecha_inicio: str | None = None,
     ) -> None:
         """Write estado.json with the current portfolio state."""
         Path(self.state_dir).mkdir(parents=True, exist_ok=True)
@@ -190,6 +190,12 @@ class PortfolioStateManager:
         prev = self.load_estado()
         prev_peak = prev.get("peak_valor", 0.0) if prev else 0.0
         peak = max(prev_peak, valor_cartera)
+
+        if fecha_inicio is None:
+            if prev and prev.get("fecha_inicio"):
+                fecha_inicio = prev["fecha_inicio"]
+            else:
+                fecha_inicio = date.strftime("%Y-%m-%d")
 
         posiciones = {
             t: s for t, s in portfolio.positions.items() if abs(s) > 1e-9
@@ -210,10 +216,9 @@ class PortfolioStateManager:
         }
         self._estado_path.write_text(json.dumps(state, indent=4, default=str))
 
-    # ── Historial_Grupo4.xlsx ──────────────────────────────────────
+    # ── Historial_Grupo4.xlsx ──────────────────────────────
 
-    _HISTORIAL_NEW_TITLE = "HISTORIAL SIMULACION — GRUPO 4 | Estrategia: merton_mom | Multi-asset"
-    _HISTORIAL_NEW_HEADERS = [
+    _HISTORIAL_HEADERS = [
         "Fecha",
         "Valor Cartera",
         "Retorno diario",
@@ -227,6 +232,9 @@ class PortfolioStateManager:
         "Cash",
         "Decision",
     ]
+
+    def _historial_title(self, strategy_name: str) -> str:
+        return f"HISTORIAL SIMULACION — GRUPO 4 | Estrategia: {strategy_name} | Multi-asset"
 
     def save_historial(
         self,
@@ -243,9 +251,11 @@ class PortfolioStateManager:
         cash: float,
         decision: str,
         group_name: str = "Grupo4",
+        strategy_name: str = "merton_custom",
     ) -> Path:
         """Append a row to Historial_Grupo4.xlsx, creating new section if needed."""
         historial_path = Path(self.state_dir) / f"Historial_{group_name}.xlsx"
+        title = self._historial_title(strategy_name)
 
         if historial_path.exists():
             wb = load_workbook(historial_path)
@@ -261,16 +271,16 @@ class PortfolioStateManager:
         date_str = date.strftime("%Y-%m-%d")
         for row_idx in range(1, ws.max_row + 1):
             cell_val = ws.cell(row=row_idx, column=1).value
-            if cell_val and str(cell_val).startswith(self._HISTORIAL_NEW_TITLE):
+            if cell_val and str(cell_val).startswith(title):
                 new_section_row = row_idx
                 break
 
         if new_section_row is None:
             # Add separator + new section
             next_row = ws.max_row + 2  # blank separator row
-            ws.cell(row=next_row, column=1, value=self._HISTORIAL_NEW_TITLE)
+            ws.cell(row=next_row, column=1, value=title)
             next_row += 1
-            for col_idx, header in enumerate(self._HISTORIAL_NEW_HEADERS, 1):
+            for col_idx, header in enumerate(self._HISTORIAL_HEADERS, 1):
                 ws.cell(row=next_row, column=col_idx, value=header)
             data_start_row = next_row + 1
         else:
@@ -311,7 +321,7 @@ class PortfolioStateManager:
         wb.save(historial_path)
         return historial_path
 
-    # ── Legacy data extraction ─────────────────────────────────────
+    # ── Legacy data extraction (E4 → new strategy migration) ──────
 
     def load_legacy_from_historial(
         self, group_name: str = "Grupo4",
@@ -406,7 +416,7 @@ class PortfolioStateManager:
         # Tag existing ops that don't have a strategy field
         for op in existing_ops:
             if "strategy" not in op:
-                op["strategy"] = "merton_mom"
+                op["strategy"] = "unknown"
 
         # Merge: legacy first, then new (avoid duplicates by date+ticker)
         existing_keys = {(o["date"], o["ticker"]) for o in existing_ops}

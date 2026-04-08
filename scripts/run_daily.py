@@ -2,8 +2,8 @@
 """Daily trading simulation runner.
 
 Usage:
-    python scripts/run_daily.py --universe jaime --strategy merton_full
-    python scripts/run_daily.py --universe jaime --strategy merton_full --date 2026-03-12
+    python scripts/run_daily.py --universe jaime --strategy merton_custom
+    python scripts/run_daily.py --universe jaime --strategy merton_custom --date 2026-03-12
 """
 
 import argparse
@@ -26,7 +26,33 @@ from src.simulation import DailyRunner
 
 def build_strategy(name: str, universe, defensive_ticker: str = "XEON.DE"):
     """Build a strategy by name."""
-    if name == "merton_mom":
+    if name == "merton_custom":
+        from src.strategy.merton_custom import MertonCustomStrategy
+        from src.models.estimators.mu import JamesSteinMean
+        from src.models.estimators.covariance import LedoitWolfCovariance
+        return MertonCustomStrategy(
+            universe=universe,
+            defensive_ticker=defensive_ticker,
+            gamma=0.5,
+            top_n=5,
+            max_risky_fraction=0.8,
+            mu_estimator=JamesSteinMean(),
+            cov_estimator=LedoitWolfCovariance(),
+            rebalance_every=21,
+            band_scale=2.0,
+        )
+    elif name == "merton_full":
+        from src.strategy.merton_full import MertonFullStrategy
+        from src.models.estimators.mu import JamesSteinMean
+        from src.models.estimators.covariance import LedoitWolfCovariance
+        return MertonFullStrategy(
+            universe=universe,
+            defensive_ticker=defensive_ticker,
+            gamma=0.5,
+            mu_estimator=JamesSteinMean(),
+            cov_estimator=LedoitWolfCovariance(),
+        )
+    elif name == "merton_mom":
         from src.strategy.merton_mom import MertonMomentumStrategy
         from src.models.estimators.mu import JamesSteinMean
         from src.models.estimators.covariance import LedoitWolfCovariance
@@ -44,11 +70,11 @@ def build_strategy(name: str, universe, defensive_ticker: str = "XEON.DE"):
             max_risky_fraction=1.0,
             rebalance_every=21,
         )
-    elif name == "merton_full":
-        from src.strategy.merton_full import MertonFullStrategy
+    elif name == "merton_dual_mom":
+        from src.strategy.merton_dual_mom import MertonDualMomentumStrategy
         from src.models.estimators.mu import JamesSteinMean
         from src.models.estimators.covariance import LedoitWolfCovariance
-        return MertonFullStrategy(
+        return MertonDualMomentumStrategy(
             universe=universe,
             defensive_ticker=defensive_ticker,
             gamma=0.5,
@@ -71,7 +97,7 @@ def build_strategy(name: str, universe, defensive_ticker: str = "XEON.DE"):
 def main():
     parser = argparse.ArgumentParser(description="Run daily trading simulation")
     parser.add_argument("--universe", required=True, help="Universe name (e.g. jaime)")
-    parser.add_argument("--strategy", required=True, help="Strategy name (e.g. merton_full)")
+    parser.add_argument("--strategy", required=True, help="Strategy name (e.g. merton_custom)")
     parser.add_argument("--date", default=None, help="Date to simulate (YYYY-MM-DD). Default: today")
     parser.add_argument("--defensive", default="XEON.DE", help="Defensive ticker")
     parser.add_argument("--cash", type=float, default=10_000_000, help="Initial cash")
@@ -126,12 +152,6 @@ def main():
     print(f"Cash:           {result['cash']:,.2f} EUR")
     print(f"Signals:        {result['n_signals']}")
     print(f"Trades:         {result['n_trades']}")
-
-    # Migration info
-    if result.get('migration_trades'):
-        print(f"\n*** MIGRATION from legacy strategy ***")
-        for t in result['migration_trades']:
-            print(f"  SELL {t.ticker}: {abs(t.shares):,.2f} shares @ {t.price:.4f} (cost: {t.cost:.2f})")
 
     if result['excel_path']:
         print(f"\nOperativa Excel: {result['excel_path']}")

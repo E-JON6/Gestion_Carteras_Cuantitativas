@@ -115,6 +115,71 @@ class ConstantCorrelationCovariance(CovEstimator):
         return _to_cov_df(matrix, history.tickers)
 
 
+@dataclass
+class BlendedEwmaCovariance(CovEstimator):
+    """Robust covariance: blended sample correlation + EWMA diagonal vol.
+
+    Pipeline:
+      1. Sample covariances on a short and a long window, blended linearly.
+      2. Extract correlation from the blend.
+      3. Reconstruct with EWMA volatilities on the diagonal:
+         Sigma = D_ewma · Corr · D_ewma.
+      4. Optional shrinkage toward scaled identity.
+      5. PSD projection (clip negative eigenvalues).
+
+    This is the covariance used by the Jaime contrarian pipeline; the EWMA
+    diagonal captures volatility clusters while the blended correlation
+    keeps structural information.
+    """
+
+    short_window: int = 63
+    long_window: int = 252
+    blend_alpha: float = 0.6
+    ewma_lambda: float = 0.94
+    shrinkage: float = 0.10
+    trading_days: int = 252
+    min_periods: int = 20
+
+    def estimate(self, history: PriceHistory) -> pd.DataFrame:
+        ret = history.log_returns()
+        if len(ret) < self.min_periods:
+            raise ValueError(
+                f"BlendedEwmaCovariance needs at least {self.min_periods} returns, got {len(ret)}"
+            )
+
+        as_short = min(self.short_window, len(ret))
+        as_long = min(self.long_window, len(ret))
+        cov_short = ret.tail(as_short).cov().values * self.trading_days
+        cov_long = ret.tail(as_long).cov().values * self.trading_days
+        cov_blend = self.blend_alpha * cov_short + (1.0 - self.blend_alpha) * cov_long
+
+        d = np.sqrt(np.maximum(np.diag(cov_blend), 1e-10))
+        d_inv = 1.0 / d
+        corr = cov_blend * np.outer(d_inv, d_inv)
+        np.fill_diagonal(corr, 1.0)
+
+        if 0 < self.ewma_lambda < 1:
+            halflife = np.log(0.5) / np.log(self.ewma_lambda)
+        else:
+            halflife = 60.0
+        ewma_var = ret.ewm(halflife=halflife, min_periods=20).var().iloc[-1].values
+        ewma_vol = np.sqrt(np.maximum(ewma_var, 1e-10) * self.trading_days)
+
+        cov = (ewma_vol[:, None] * corr) * ewma_vol[None, :]
+
+        if self.shrinkage > 0:
+            n = cov.shape[0]
+            mu_target = np.trace(cov) / n
+            cov = (1 - self.shrinkage) * cov + self.shrinkage * mu_target * np.eye(n)
+
+        eigvals, eigvecs = np.linalg.eigh(cov)
+        eigvals = np.maximum(eigvals, 1e-8)
+        cov = eigvecs @ np.diag(eigvals) @ eigvecs.T
+        cov = (cov + cov.T) / 2.0
+
+        return _to_cov_df(cov, history.tickers)
+
+
 # ── Series / rolling estimator ──────────────────────────────────────────
 
 @dataclass
