@@ -1,6 +1,6 @@
 """
-Reconstruccion de la cartera viva a partir de los Excel operaciones_rebalanceo_*.xlsx
-y generacion de informes (NAV, metricas, benchmark, costes).
+Reconstruccion de la cartera viva a partir de operaciones_rebalanceo_*.xlsx y/o
+Operativa_Grupo4.xlsx (hoja Operativa) y generacion de informes.
 
 Uso: main_portfolio_backtest.py o run_live_portfolio_report().
 """
@@ -28,18 +28,33 @@ def discover_operaciones_files(results_dir: Path) -> list[tuple[pd.Timestamp, Pa
         if not m:
             continue
         out.append((pd.Timestamp(m.group(1)), p))
+    operativa = results_dir / "Operativa_Grupo4.xlsx"
+    if operativa.is_file():
+        mtime = pd.Timestamp.fromtimestamp(operativa.stat().st_mtime)
+        out.append((mtime.normalize(), operativa))
     out.sort(key=lambda x: x[0])
     return out
 
 
 def load_orders_from_excel(path: Path) -> pd.DataFrame:
-    df = pd.read_excel(path, sheet_name="Ordenes")
+    preferred = str(getattr(cfg, "REGISTRADOR_ORDENES_SHEET_NAME", "Operativa"))
+    xl = pd.ExcelFile(path, engine="openpyxl")
+    sheet_name = None
+    for candidate in (preferred, "Operativa", "Ordenes"):
+        if candidate in xl.sheet_names:
+            sheet_name = candidate
+            break
+    if sheet_name is None:
+        sheet_name = xl.sheet_names[0]
+    df = pd.read_excel(path, sheet_name=sheet_name, engine="openpyxl")
     if df.empty:
         return df
     expected = {"ID", "Cantidad", "Precio", "CT", "Precio Ejecutado"}
     cols = set(df.columns)
     if not expected.issubset(cols):
-        raise ValueError(f"Hoja Ordenes incompleta en {path}: faltan columnas {expected - cols}")
+        raise ValueError(
+            f"Hoja operativa incompleta en {path} ({sheet_name!r}): faltan columnas {expected - cols}"
+        )
     return df
 
 
@@ -173,7 +188,7 @@ def run_live_portfolio_report(
     output_subdir: str | None = None,
 ) -> dict:
     """
-    Lee todos los ``operaciones_rebalanceo_YYYY-MM-DD.xlsx`` en ``results_dir``,
+    Lee ``operaciones_rebalanceo_YYYY-MM-DD.xlsx`` y/o ``Operativa_Grupo4.xlsx`` en ``results_dir``,
     reconstruye posiciones, descarga precios y escribe informe Excel + CSVs.
 
     ``initial_positions_path``: Excel opcional con el estado *antes* del primer
@@ -193,7 +208,8 @@ def run_live_portfolio_report(
     files = discover_operaciones_files(results_dir)
     if not files:
         raise FileNotFoundError(
-            f"No se encontraron archivos operaciones_rebalanceo_YYYY-MM-DD.xlsx en {results_dir}"
+            f"No se encontraron Excel de operaciones en {results_dir} "
+            "(operaciones_rebalanceo_*.xlsx u Operativa_Grupo4.xlsx)."
         )
 
     ini_path = initial_positions_path

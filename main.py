@@ -8,7 +8,7 @@ En caidas de mercado:
 
 run_single() usa la misma politica de rebalanceo que backtest/engine (portfolio.rebalance_policy).
 
-Salidas tipicas en results/: operaciones_rebalanceo_{fecha}.xlsx,
+Salidas tipicas en results/: Operativa_Grupo4.xlsx (hoja Operativa) o plantilla en config,
 posiciones_post_rebalanceo_{fecha}.xlsx, posiciones_post_rebalanceo_ultimo.xlsx,
 historial_ejecuciones.csv (append).
 """
@@ -259,7 +259,7 @@ def run_single(
     )
 
     date_str = pd.Timestamp(last_dt).strftime("%Y-%m-%d")
-    out_template = getattr(cfg, "REGISTRADOR_OUTPUT_TEMPLATE", "results/operaciones_rebalanceo_{date}.xlsx")
+    out_template = getattr(cfg, "REGISTRADOR_OUTPUT_TEMPLATE", "results/Operativa_Grupo4.xlsx")
     reg_path = out_template.format(date=date_str)
 
     reg = run_registrador_v0(

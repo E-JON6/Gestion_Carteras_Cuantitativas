@@ -220,6 +220,16 @@ TX_COST_PER_SIDE = 0.0008
 TX_COST_PER_SIDE_MIN = 0.0005
 TX_COST_PER_SIDE_MAX = 0.0012
 
+# Excel en Data/: tabla ticker + comision (fraccion nominal por lado; coma o punto).
+# None o "" = solo TX_COST_* homogeneo.
+ETF_COMMISSIONS_EXCEL_PATH = "Data/comisiones_etfs.xlsx"
+# "table" = dos columnas (ticker, comision), filas. "horizontal" = layout legacy 3 filas.
+ETF_COMMISSIONS_FORMAT = "table"
+# Hoja: indice 0 o nombre (ej. "comisiones_etfs").
+ETF_COMMISSIONS_SHEET = 0
+# True = error si algun ticker descargado no tiene fila en el Excel.
+ETF_COMMISSION_REQUIRE_EXCEL_FOR_ALL = False
+
 # ============================================================
 # BACKTEST
 # ============================================================
@@ -228,7 +238,7 @@ TX_COST_PER_SIDE_MAX = 0.0012
 # No limita a Davis-Norman (las bandas son independientes del calendario).
 # En vivo (main.py) no hay "una vez al mes" salvo que ejecutes main solo ese dia.
 REBALANCE_FREQ   = "ME"
-INITIAL_CAPITAL  = 100_000
+INITIAL_CAPITAL  = 10002187
 BENCHMARK_TICKER = "SPY"
 # ETF liquido que replica MSCI World (USD); alternativa europea: SWDA.L
 BENCHMARK_MSCI_WORLD_TICKER = "URTH"
@@ -242,7 +252,11 @@ BENCHMARK_MSCI_WORLD_TICKER = "URTH"
 # REGISTRADOR_MATCH_ENGINE_REBALANCE_RULE: si True, no generar ordenes Excel cuando
 # el engine tampoco operaria (hay posiciones y DN no rebalancea).
 REGISTRADOR_MATCH_ENGINE_REBALANCE_RULE = True
-REGISTRADOR_OUTPUT_TEMPLATE = "results/operaciones_rebalanceo_{date}.xlsx"
+# Salida operativa (mismas columnas que antes: ID, Cantidad, Precio, CT, Precio Ejecutado).
+# Si no usas {date}, el nombre es fijo (p. ej. sobrescribe cada ejecucion).
+REGISTRADOR_OUTPUT_TEMPLATE = "results/Operativa_Grupo4.xlsx"
+# Primera hoja del Excel (antes "Ordenes").
+REGISTRADOR_ORDENES_SHEET_NAME = "Operativa"
 
 # Cartera real (titulos): Excel fuente de verdad para main.run_single cuando
 # current_positions no se pasa explicitamente. Columnas: Ticker, Cantidad.

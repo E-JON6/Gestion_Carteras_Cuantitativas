@@ -161,15 +161,15 @@ def _commission_rates_report(
                 "Origen de ct",
                 "Uso en backtest",
                 "Registrador",
-                "Formula data_loader (v0)",
+                "Origen tasas",
             ],
             "Detalle": [
                 "Comision_pct_nominal = ct*100 (ej. 0.15 => 0,15% del nominal por operacion y lado). "
                 "Comision_bps = ct*10000 (1 bp = 0,01%).",
-                "Un valor por ticker al descargar datos: download_market_data -> compute_transaction_costs_v0.",
+                "Un valor por ticker: download_market_data -> compute_transaction_costs_for_download (Excel + fallback).",
                 "Coste EUR = suma(|Delta_cantidad| * Precio * ct) por operacion y activo.",
                 "Misma tasa ct: compra ~P*(1+ct), venta ~P*(1-ct); en notional equivale a ct por lado.",
-                "Tasa fija por ETF (config TX_COST_PER_SIDE, acotada a MIN/MAX), ~0,05%–0,12% bróker.",
+                "Excel tabla Data/comisiones_etfs.xlsx (u horizontal si config); sin fila -> TX_COST_PER_SIDE (MIN/MAX).",
             ],
         }
     )
@@ -326,7 +326,7 @@ def run_backtest(
     if verbose:
         print(f"[Backtest] {len(actual_review)} fechas de revision")
         if transaction_costs:
-            print("[Backtest] Costes de transacción activos (data_loader.compute_transaction_costs_v0)")
+            print("[Backtest] Costes de transacción activos (Excel Data + fallback TX_COST_*)")
         else:
             print("[Backtest] Aviso: sin transaction_costs en market_data")
 

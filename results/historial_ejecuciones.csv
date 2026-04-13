@@ -1,0 +1,2 @@
+fecha_datos,nav_previo_eur,path_operaciones,path_posiciones_post_rebalanceo,path_snapshot_ultimo,dn_rebalance,ordenes_filas,skipped_due_to_dn
+2026-04-09,10002187.0,results\Operativa_Grupo4.xlsx,results\posiciones_post_rebalanceo_2026-04-09.xlsx,results\posiciones_post_rebalanceo_ultimo.xlsx,True,21,False

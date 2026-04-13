@@ -4,7 +4,7 @@ Entrada/salida de posiciones en Excel (cartera real en titulos).
 Flujo diario:
   1. Mantener results/posiciones_cartera.xlsx con columnas Ticker + Cantidad.
   2. Ejecutar main.py: carga posiciones, calcula NAV y pesos, pipeline + registrador.
-  3. Enviar operaciones_rebalanceo_{fecha}.xlsx al bróker.
+  3. Enviar Operativa_Grupo4.xlsx (u plantilla en config) al bróker.
   4. Tras la ejecucion, actualizar a mano posiciones_cartera.xlsx (o copiar desde
      posiciones_post_rebalanceo_{fecha}.xlsx o posiciones_post_rebalanceo_ultimo.xlsx).
 """
